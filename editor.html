@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>L A Y E R : S — Map Editor</title>
+
+    <link
+        rel="stylesheet"
+        href="./editor.css"
+    >
+
+</head>
+
+<body>
+
+    <main id="editor">
+
+        <!-- 에디터 헤더 -->
+
+        <header id="editor-header">
+
+            <h1>
+                L A Y E R : S
+            </h1>
+
+            <span>
+                MAP EDITOR
+            </span>
+
+        </header>
+
+
+        <!-- 에디터 본체 -->
+
+        <section id="editor-body">
+
+            <!-- 왼쪽 팔레트 -->
+
+            <aside id="palette">
+
+                <button
+                    class="tile-button selected"
+                    data-tile="."
+                >
+                    .
+                </button>
+
+                <button
+                    class="tile-button"
+                    data-tile="R"
+                >
+                    R
+                </button>
+
+                <button
+                    class="tile-button"
+                    data-tile="G"
+                >
+                    G
+                </button>
+
+                <button
+                    class="tile-button"
+                    data-tile="B"
+                >
+                    B
+                </button>
+
+                <button
+                    class="tile-button"
+                    data-tile="Y"
+                >
+                    Y
+                </button>
+
+                <button
+                    class="tile-button"
+                    data-tile="M"
+                >
+                    M
+                </button>
+
+                <button
+                    class="tile-button"
+                    data-tile="C"
+                >
+                    C
+                </button>
+
+                <button
+                    class="tile-button"
+                    data-tile="W"
+                >
+                    W
+                </button>
+
+                <button
+                    class="tile-button"
+                    data-tile="@"
+                >
+                    @
+                </button>
+
+                <button
+                    class="tile-button"
+                    data-tile="$"
+                >
+                    $
+                </button>
+
+            </aside>
+
+
+            <!-- 맵 영역 -->
+
+            <section id="map-editor">
+
+                <canvas id="map-canvas"></canvas>
+
+            </section>
+
+        </section>
+
+
+        <!-- 하단 컨트롤 -->
+
+        <footer id="editor-footer">
+
+            <button id="clear-button">
+                CLEAR
+            </button>
+
+            <button id="save-button">
+                SAVE
+            </button>
+
+            <button id="load-button">
+                LOAD
+            </button>
+
+            <button id="copy-button">
+                COPY CODE
+            </button>
+
+        </footer>
+
+    </main>
+
+
+    <script
+        type="module"
+        src="./js/editor.js"
+    ></script>
+
+</body>
+
+</html>

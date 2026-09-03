@@ -1,0 +1,228 @@
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+
+    background: #000000;
+    color: #FFFFFF;
+
+    font-family: Arial, sans-serif;
+}
+
+button {
+    border: none;
+    outline: none;
+
+    background: transparent;
+    color: #FFFFFF;
+
+    font: inherit;
+
+    cursor: pointer;
+}
+
+
+/*
+ * 전체 에디터
+ */
+
+#editor {
+
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+}
+
+
+/*
+ * 헤더
+ */
+
+#editor-header {
+
+    height: 70px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 32px;
+
+    border-bottom: 1px solid #222222;
+}
+
+#editor-header h1 {
+
+    margin: 0;
+
+    font-size: 20px;
+    font-weight: 400;
+    letter-spacing: 8px;
+}
+
+#editor-header span {
+
+    margin-left: 24px;
+
+    font-size: 11px;
+    letter-spacing: 3px;
+
+    opacity: 0.5;
+}
+
+
+/*
+ * 에디터 본체
+ */
+
+#editor-body {
+
+    flex: 1;
+
+    display: flex;
+
+    min-height: 0;
+}
+
+
+/*
+ * 팔레트
+ */
+
+#palette {
+
+    width: 90px;
+
+    display: flex;
+    flex-direction: column;
+
+    align-items: center;
+
+    gap: 8px;
+
+    padding: 20px 0;
+
+    border-right: 1px solid #222222;
+}
+
+.tile-button {
+
+    width: 48px;
+    height: 48px;
+
+    border: 1px solid #333333;
+
+    font-size: 16px;
+
+    transition:
+        border-color 0.1s,
+        background 0.1s;
+}
+
+.tile-button:hover {
+
+    border-color: #FFFFFF;
+}
+
+.tile-button.selected {
+
+    border-color: #FFFFFF;
+
+    background: #FFFFFF;
+    color: #000000;
+}
+
+
+/*
+ * 맵 에디터 영역
+ */
+
+#map-editor {
+
+    flex: 1;
+
+    min-width: 0;
+    min-height: 0;
+
+    display: flex;
+
+    justify-content: center;
+    align-items: center;
+}
+
+
+/*
+ * 맵 Canvas
+ */
+
+#map-canvas {
+
+    display: block;
+
+    width: min(
+        calc(100vh - 150px),
+        calc(100vw - 140px)
+    );
+
+    height: min(
+        calc(100vh - 150px),
+        calc(100vw - 140px)
+    );
+
+    image-rendering: pixelated;
+
+    cursor: crosshair;
+}
+
+
+/*
+ * 하단 컨트롤
+ */
+
+#editor-footer {
+
+    height: 70px;
+
+    display: flex;
+
+    justify-content: flex-end;
+    align-items: center;
+
+    gap: 8px;
+
+    padding: 0 32px;
+
+    border-top: 1px solid #222222;
+}
+
+#editor-footer button {
+
+    height: 36px;
+
+    padding: 0 18px;
+
+    border: 1px solid #333333;
+
+    font-size: 11px;
+    letter-spacing: 2px;
+
+    transition:
+        border-color 0.1s,
+        background 0.1s,
+        color 0.1s;
+}
+
+#editor-footer button:hover {
+
+    border-color: #FFFFFF;
+
+    background: #FFFFFF;
+    color: #000000;
+}
