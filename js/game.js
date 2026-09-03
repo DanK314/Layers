@@ -209,7 +209,7 @@ export class Game {
                     },
 
                     {
-                        glow: true,
+                        glow: false,
                         glowColor: color
                     }
                 );

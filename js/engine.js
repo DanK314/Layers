@@ -112,7 +112,7 @@ export class BoxDrawer {
 
         if (this.opts.glow) {
             ctx.shadowColor = this.opts.glowColor;
-            ctx.shadowBlur = 12;
+            ctx.shadowBlur = 24;
         }
 
         ctx.fillStyle = this.color;
