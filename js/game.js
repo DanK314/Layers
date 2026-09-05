@@ -149,24 +149,11 @@ export class Game {
 
                 const tile = map[y][x];
 
-                if (tile.type === "spike") {
-                    this.#spikes.push(
-                        new Spike(
-                            this.#ctx,
-                            x * this.#tileSize,
-                            y * this.#tileSize,
-                            this.#tileSize
-                        )
-                    );
-
-                    continue;
-                }
-
                 /*
-                 * RGB 성분이 하나도 없다면 빈 칸이다.
+                 * 블록으로 지정된 타일만 Block으로 생성한다.
                  */
 
-                if (!tile.R && !tile.G && !tile.B) {
+                if (tile.type !== "block") {
                     continue;
                 }
 
@@ -212,31 +199,58 @@ export class Game {
                     color = "#0000FF";
                 }
 
+
                 /*
-                 * 하나의 맵 타일은 하나의 Block만 생성한다.
+                 * 공통 생성 인자
                  */
 
-                const block = new Block(
-                    this.#ctx,
+                const rgb = {
+                    R: tile.R,
+                    G: tile.G,
+                    B: tile.B
+                };
 
-                    x * this.#tileSize,
-                    y * this.#tileSize,
+                const options = {
+                    glow: false,
+                    glowColor: color
+                };
 
-                    color,
 
-                    {
-                        R: tile.R,
-                        G: tile.G,
-                        B: tile.B
-                    },
+                /*
+                 * 타입에 따라 객체를 생성한다.
+                 */
 
-                    {
-                        glow: false,
-                        glowColor: color
-                    }
+                if (tile.type === "spike") {
+
+                    this.#spikes.push(
+                        new Spike(
+                            this.#ctx,
+                            x * this.#tileSize,
+                            y * this.#tileSize,
+                            color,
+                            rgb,
+                            options
+                        )
+                    );
+
+                    continue;
+                }
+
+
+                /*
+                 * 기본 타입은 Block이다.
+                 */
+
+                this.#blocks.push(
+                    new Block(
+                        this.#ctx,
+                        x * this.#tileSize,
+                        y * this.#tileSize,
+                        color,
+                        rgb,
+                        options
+                    )
                 );
-
-                this.#blocks.push(block);
             }
         }
     }
@@ -327,6 +341,10 @@ export class Game {
 
         for (const spike of this.#spikes) {
 
+            if (!spike.isSolid(this.#activeLayer)) {
+                continue;
+            }
+
             const spikeBox = spike.hitbox;
 
             const colliding =
@@ -336,7 +354,9 @@ export class Game {
                 this.#player.y + this.#player.h > spikeBox.y;
 
             if (colliding) {
+
                 this.#player.respawn();
+
                 return;
             }
         }

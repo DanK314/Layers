@@ -5,17 +5,11 @@
 
     <meta charset="UTF-8">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>L A Y E R : S — Map Editor</title>
 
-    <link
-        rel="stylesheet"
-        href="./editor.css"
-    >
+    <link rel="stylesheet" href="./editor.css">
 
 </head>
 
@@ -46,82 +40,96 @@
 
             <aside id="palette">
 
-                <button
-                    class="tile-button selected"
-                    data-tile="."
-                >
-                    .
-                </button>
+                <!-- 오브젝트 선택 -->
 
-                <button
-                    class="tile-button"
-                    data-tile="R"
-                >
-                    R
-                </button>
+                <section id="object-palette">
 
-                <button
-                    class="tile-button"
-                    data-tile="G"
-                >
-                    G
-                </button>
+                    <div class="palette-title">
+                        OBJECT
+                    </div>
 
-                <button
-                    class="tile-button"
-                    data-tile="B"
-                >
-                    B
-                </button>
+                    <button class="object-button selected" data-object="." data-key="1">
+                        <span class="object-number">1</span>
+                        <span class="object-symbol">.</span>
+                        <span class="object-name">AIR</span>
+                    </button>
 
-                <button
-                    class="tile-button"
-                    data-tile="Y"
-                >
-                    Y
-                </button>
+                    <button class="object-button" data-object="#" data-key="2">
+                        <span class="object-number">2</span>
+                        <span class="object-symbol">#</span>
+                        <span class="object-name">BLOCK</span>
+                    </button>
 
-                <button
-                    class="tile-button"
-                    data-tile="M"
-                >
-                    M
-                </button>
+                    <button class="object-button" data-object="^" data-key="3">
+                        <span class="object-number">3</span>
+                        <span class="object-symbol">^</span>
+                        <span class="object-name">SPIKE</span>
+                    </button>
 
-                <button
-                    class="tile-button"
-                    data-tile="C"
-                >
-                    C
-                </button>
+                    <button class="object-button" data-object="@" data-key="4">
+                        <span class="object-number">4</span>
+                        <span class="object-symbol">@</span>
+                        <span class="object-name">PLAYER</span>
+                    </button>
 
-                <button
-                    class="tile-button"
-                    data-tile="W"
-                >
-                    W
-                </button>
+                    <button class="object-button" data-object="$" data-key="5">
+                        <span class="object-number">5</span>
+                        <span class="object-symbol">$</span>
+                        <span class="object-name">GOAL</span>
+                    </button>
 
-                <button
-                    class="tile-button"
-                    data-tile="^"
-                >
-                    ^
-                </button>
+                </section>
 
-                <button
-                    class="tile-button"
-                    data-tile="@"
-                >
-                    @
-                </button>
 
-                <button
-                    class="tile-button"
-                    data-tile="$"
-                >
-                    $
-                </button>
+                <!-- 구분선 -->
+
+                <div class="palette-divider"></div>
+
+
+                <!-- 색상 선택 -->
+
+                <section id="color-palette">
+
+                    <div class="palette-title">
+                        COLOR
+                    </div>
+
+                    <button class="color-button selected" data-color="W" aria-label="White">
+                        <span class="color-swatch color-white"></span>
+                        <span>W</span>
+                    </button>
+
+                    <button class="color-button" data-color="R" aria-label="Red">
+                        <span class="color-swatch color-red"></span>
+                        <span>R</span>
+                    </button>
+
+                    <button class="color-button" data-color="G" aria-label="Green">
+                        <span class="color-swatch color-green"></span>
+                        <span>G</span>
+                    </button>
+
+                    <button class="color-button" data-color="B" aria-label="Blue">
+                        <span class="color-swatch color-blue"></span>
+                        <span>B</span>
+                    </button>
+
+                    <button class="color-button" data-color="Y" aria-label="Yellow">
+                        <span class="color-swatch color-yellow"></span>
+                        <span>Y</span>
+                    </button>
+
+                    <button class="color-button" data-color="M" aria-label="Magenta">
+                        <span class="color-swatch color-magenta"></span>
+                        <span>M</span>
+                    </button>
+
+                    <button class="color-button" data-color="C" aria-label="Cyan">
+                        <span class="color-swatch color-cyan"></span>
+                        <span>C</span>
+                    </button>
+
+                </section>
 
             </aside>
 
@@ -162,10 +170,7 @@
     </main>
 
 
-    <script
-        type="module"
-        src="./js/editor.js"
-    ></script>
+    <script type="module" src="./js/editor.js"></script>
 
 </body>
 

@@ -1,20 +1,13 @@
-const canvas = document.getElementById("map-canvas");
+const canvas = document.querySelector("#map-canvas");
 const ctx = canvas.getContext("2d");
 
-const paletteButtons =
-    document.querySelectorAll(".tile-button");
+const objectButtons = document.querySelectorAll(".object-button");
+const colorButtons = document.querySelectorAll(".color-button");
 
-const clearButton =
-    document.getElementById("clear-button");
-
-const saveButton =
-    document.getElementById("save-button");
-
-const loadButton =
-    document.getElementById("load-button");
-
-const copyButton =
-    document.getElementById("copy-button");
+const clearButton = document.querySelector("#clear-button");
+const saveButton = document.querySelector("#save-button");
+const loadButton = document.querySelector("#load-button");
+const copyButton = document.querySelector("#copy-button");
 
 
 /*
@@ -26,147 +19,190 @@ const MAP_HEIGHT = 16;
 
 
 /*
- * Canvas 해상도
- *
- * 실제 맵은 항상 16 × 16 칸이다.
+ * 현재 선택
  */
 
-const CANVAS_SIZE = 640;
-
-canvas.width = CANVAS_SIZE;
-canvas.height = CANVAS_SIZE;
-
-
-/*
- * 타일 크기
- */
-
-const TILE_SIZE =
-    CANVAS_SIZE / MAP_WIDTH;
-
-
-/*
- * 사용할 타일 문자
- */
-
-const TILE_CHARS = [
-    ".",
-    "R",
-    "G",
-    "B",
-    "Y",
-    "M",
-    "C",
-    "W",
-    "^",
-    "@",
-    "$"
-];
-
-
-/*
- * 현재 선택된 타일
- */
-
-let selectedTile = ".";
+let selectedObject = ".";
+let selectedColor = "R";
 
 
 /*
  * 맵 데이터
  *
- * map[y][x]
+ * color[y][x]
+ * object[y][x]
  */
 
-let map = createEmptyMap();
+let colorMap = createColorMap();
+let objectMap = createObjectMap();
 
 
 /*
- * 마우스 드래그 상태
+ * 마우스 상태
  */
 
-let isDrawing = false;
+let isMouseDown = false;
 
 
 /*
- * 빈 맵 생성
+ * 색상 정보
  */
 
-function createEmptyMap() {
+const COLORS = {
+    R: "#FF0000",
+    G: "#00FF00",
+    B: "#0000FF",
+    Y: "#FFFF00",
+    M: "#FF00FF",
+    C: "#00FFFF",
+    W: "#FFFFFF"
+};
 
-    const result = [];
 
-    for (let y = 0; y < MAP_HEIGHT; y++) {
+/*
+ * 오브젝트 정보
+ */
 
-        const row = [];
+const OBJECTS = {
+    ".": {
+        name: "AIR"
+    },
 
-        for (let x = 0; x < MAP_WIDTH; x++) {
+    "#": {
+        name: "BLOCK"
+    },
 
-            row.push(".");
-        }
+    "^": {
+        name: "SPIKE"
+    },
 
-        result.push(row);
+    "@": {
+        name: "PLAYER"
+    },
+
+    "$": {
+        name: "GOAL"
     }
-
-    return result;
-}
+};
 
 
 /*
- * 타일 색상
+ * 맵 생성
  */
 
-function getTileColor(tile) {
+function createColorMap() {
 
-    switch (tile) {
-
-        case "R":
-            return "#FF0000";
-
-        case "G":
-            return "#00FF00";
-
-        case "B":
-            return "#0000FF";
-
-        case "Y":
-            return "#FFFF00";
-
-        case "M":
-            return "#FF00FF";
-
-        case "C":
-            return "#00FFFF";
-
-        case "W":
-            return "#FFFFFF";
-
-        case "^":
-            return "#EAF6FF";
-
-        case "@":
-            return "#FFFFFF";
-
-        case "$":
-            return "#FFFFFF";
-
-        default:
-            return "#000000";
-    }
-}
-
-
-/*
- * 맵 그리기
- */
-
-function drawMap() {
-
-    ctx.clearRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
+    return Array.from(
+        { length: MAP_HEIGHT },
+        () =>
+            Array(MAP_WIDTH).fill(".")
     );
+}
+
+
+function createObjectMap() {
+
+    return Array.from(
+        { length: MAP_HEIGHT },
+        () =>
+            Array(MAP_WIDTH).fill(".")
+    );
+}
+
+
+/*
+ * Canvas 크기
+ */
+
+function resizeCanvas() {
+
+    const rect = canvas.getBoundingClientRect();
+
+    const size = Math.min(
+        rect.width,
+        rect.height
+    );
+
+    canvas.width = size;
+    canvas.height = size;
+
+    draw();
+}
+
+
+window.addEventListener(
+    "resize",
+    resizeCanvas
+);
+
+
+/*
+ * 셀 크기
+ */
+
+function getCellSize() {
+
+    return canvas.width / MAP_WIDTH;
+}
+
+
+/*
+ * 캔버스 좌표 → 맵 좌표
+ */
+
+function getCellFromMouse(event) {
+
+    const rect = canvas.getBoundingClientRect();
+
+    const x =
+        (event.clientX - rect.left) /
+        rect.width *
+        canvas.width;
+
+    const y =
+        (event.clientY - rect.top) /
+        rect.height *
+        canvas.height;
+
+    const cellSize = getCellSize();
+
+    const cellX = Math.floor(
+        x / cellSize
+    );
+
+    const cellY = Math.floor(
+        y / cellSize
+    );
+
+    if (
+        cellX < 0 ||
+        cellX >= MAP_WIDTH ||
+        cellY < 0 ||
+        cellY >= MAP_HEIGHT
+    ) {
+        return null;
+    }
+
+    return {
+        x: cellX,
+        y: cellY
+    };
+}
+
+
+/*
+ * 셀 하나 그리기
+ */
+
+function drawCell(x, y) {
+
+    const cellSize = getCellSize();
+
+    const px = x * cellSize;
+    const py = y * cellSize;
+
+    const color = colorMap[y][x];
+    const object = objectMap[y][x];
 
 
     /*
@@ -176,286 +212,322 @@ function drawMap() {
     ctx.fillStyle = "#000000";
 
     ctx.fillRect(
+        px,
+        py,
+        cellSize,
+        cellSize
+    );
+
+
+    /*
+     * 오브젝트가 공기가 아니면
+     * 선택된 색상으로 표시
+     */
+
+    if (
+        object !== "." &&
+        color !== "."
+    ) {
+
+        ctx.fillStyle =
+            COLORS[color];
+
+        ctx.shadowColor =
+            COLORS[color];
+
+        ctx.shadowBlur = 8;
+
+
+        /*
+         * BLOCK
+         */
+
+        if (object === "#") {
+
+            ctx.fillRect(
+                px + cellSize * 0.08,
+                py + cellSize * 0.08,
+                cellSize * 0.84,
+                cellSize * 0.84
+            );
+        }
+
+
+        /*
+         * SPIKE
+         */
+
+        else if (object === "^") {
+
+            const cx = px + cellSize * 0.5;
+            const cy = py + cellSize * 0.5;
+            const half = cellSize * 0.36;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, py + 2);
+            ctx.lineTo(px + cellSize - 2, cy);
+            ctx.lineTo(cx, py + cellSize - 2);
+            ctx.lineTo(px + 2, cy);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(cx, py + half);
+            ctx.lineTo(px + cellSize - half, cy);
+            ctx.lineTo(cx, py + cellSize - half);
+            ctx.lineTo(px + half, cy);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+
+        /*
+         * PLAYER
+         */
+
+        else if (object === "@") {
+
+            ctx.beginPath();
+
+            ctx.arc(
+                px + cellSize * 0.5,
+                py + cellSize * 0.5,
+                cellSize * 0.30,
+                0,
+                Math.PI * 2
+            );
+
+            ctx.fill();
+        }
+
+
+        /*
+         * GOAL
+         */
+
+        else if (object === "$") {
+
+            ctx.strokeStyle =
+                COLORS[color];
+
+            ctx.lineWidth =
+                Math.max(2, cellSize * 0.08);
+
+            ctx.strokeRect(
+                px + cellSize * 0.2,
+                py + cellSize * 0.2,
+                cellSize * 0.6,
+                cellSize * 0.6
+            );
+        }
+
+        ctx.shadowBlur = 0;
+    }
+
+
+    /*
+     * 맵 격자
+     */
+
+    ctx.strokeStyle = "#5e5e5e";
+
+    ctx.lineWidth = 1;
+
+    ctx.strokeRect(
+        px + 0.5,
+        py + 0.5,
+        cellSize - 1,
+        cellSize - 1
+    );
+}
+
+
+/*
+ * 전체 맵 그리기
+ */
+
+function draw() {
+
+    ctx.clearRect(
         0,
         0,
         canvas.width,
         canvas.height
     );
 
+    for (
+        let y = 0;
+        y < MAP_HEIGHT;
+        y++
+    ) {
 
-    /*
-     * 타일
-     */
+        for (
+            let x = 0;
+            x < MAP_WIDTH;
+            x++
+        ) {
 
-    for (let y = 0; y < MAP_HEIGHT; y++) {
-
-        for (let x = 0; x < MAP_WIDTH; x++) {
-
-            const tile = map[y][x];
-
-            if (tile === ".") {
-                continue;
-            }
-
-            const color =
-                getTileColor(tile);
-
-            ctx.save();
-
-            if (tile === "$") {
-
-                ctx.fillStyle = "#000000";
-                ctx.shadowColor = "#FFFFFF";
-                ctx.shadowBlur = 18;
-
-                ctx.fillRect(
-                    x * TILE_SIZE + 1,
-                    y * TILE_SIZE + 1,
-                    TILE_SIZE - 2,
-                    TILE_SIZE - 2
-                );
-
-            } else if (tile === "^") {
-
-                const px = x * TILE_SIZE;
-                const py = y * TILE_SIZE;
-                const s = TILE_SIZE;
-                const cx = px + s / 2;
-                const cy = py + s / 2;
-
-                ctx.fillStyle = color;
-                ctx.shadowColor = "#FFFFFF";
-                ctx.shadowBlur = 10;
-
-                ctx.beginPath();
-                ctx.moveTo(cx, py + 2);
-                ctx.lineTo(px + s - 2, cy);
-                ctx.lineTo(cx, py + s - 2);
-                ctx.lineTo(px + 2, cy);
-                ctx.closePath();
-                ctx.fill();
-
-            } else {
-
-                ctx.fillStyle = color;
-                ctx.shadowColor = color;
-                ctx.shadowBlur = 8;
-
-                ctx.fillRect(
-                    x * TILE_SIZE + 1,
-                    y * TILE_SIZE + 1,
-                    TILE_SIZE - 2,
-                    TILE_SIZE - 2
-                );
-            }
-
-            ctx.restore();
+            drawCell(x, y);
         }
     }
+}
+
+
+/*
+ * 오브젝트 선택
+ */
+
+function selectObject(object) {
+
+    if (!OBJECTS[object]) {
+        return;
+    }
+
+    selectedObject = object;
 
 
     /*
-     * 격자
+     * 기존 선택 해제
      */
 
-    ctx.save();
-
-    ctx.strokeStyle = "#222222";
-    ctx.lineWidth = 1;
-
-    for (let x = 0; x <= MAP_WIDTH; x++) {
-
-        const position =
-            Math.round(x * TILE_SIZE) + 0.5;
-
-        ctx.beginPath();
-
-        ctx.moveTo(
-            position,
-            0
-        );
-
-        ctx.lineTo(
-            position,
-            canvas.height
-        );
-
-        ctx.stroke();
-    }
-
-    for (let y = 0; y <= MAP_HEIGHT; y++) {
-
-        const position =
-            Math.round(y * TILE_SIZE) + 0.5;
-
-        ctx.beginPath();
-
-        ctx.moveTo(
-            0,
-            position
-        );
-
-        ctx.lineTo(
-            canvas.width,
-            position
-        );
-
-        ctx.stroke();
-    }
-
-    ctx.restore();
-
-
-    /*
-     * 타일 문자 표시
-     *
-     * 에디터에서 맵 구조를
-     * 쉽게 확인할 수 있도록 한다.
-     */
-
-    ctx.save();
-
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    ctx.font = "bold 16px monospace";
-
-    for (let y = 0; y < MAP_HEIGHT; y++) {
-
-        for (let x = 0; x < MAP_WIDTH; x++) {
-
-            const tile = map[y][x];
-
-            if (tile === ".") {
-                continue;
-            }
-
-            ctx.fillStyle =
-                tile === "$"
-                    ? "#FFFFFF"
-                    : "#000000";
-
-            ctx.fillText(
-                tile,
-                x * TILE_SIZE + TILE_SIZE / 2,
-                y * TILE_SIZE + TILE_SIZE / 2
+    objectButtons.forEach(
+        button => {
+            button.classList.toggle(
+                "selected",
+                button.dataset.object === object
             );
         }
-    }
-
-    ctx.restore();
+    );
 }
 
 
 /*
- * Canvas 좌표 → 맵 좌표
+ * 색상 선택
  */
 
-function getMapPosition(event) {
+function selectColor(color) {
 
-    const rect =
-        canvas.getBoundingClientRect();
-
-    const canvasX =
-        (event.clientX - rect.left)
-        * (canvas.width / rect.width);
-
-    const canvasY =
-        (event.clientY - rect.top)
-        * (canvas.height / rect.height);
-
-    const x =
-        Math.floor(
-            canvasX / TILE_SIZE
-        );
-
-    const y =
-        Math.floor(
-            canvasY / TILE_SIZE
-        );
-
-    if (
-        x < 0 ||
-        x >= MAP_WIDTH ||
-        y < 0 ||
-        y >= MAP_HEIGHT
-    ) {
-        return null;
+    if (!COLORS[color]) {
+        return;
     }
 
-    return {
-        x,
-        y
-    };
-}
+    selectedColor = color;
 
-
-/*
- * 특수 타일 배치
- *
- * @와 $는 맵에 하나만 존재하도록 한다.
- */
-
-function placeTile(x, y) {
 
     /*
-     * @ 또는 $를 새 위치에 놓는 경우
-     * 기존 것을 제거한다.
+     * 기존 선택 해제
      */
 
-    if (
-        selectedTile === "@" ||
-        selectedTile === "$"
-    ) {
-
-        for (let mapY = 0; mapY < MAP_HEIGHT; mapY++) {
-
-            for (let mapX = 0; mapX < MAP_WIDTH; mapX++) {
-
-                if (
-                    map[mapY][mapX]
-                    === selectedTile
-                ) {
-                    map[mapY][mapX] = ".";
-                }
-            }
+    colorButtons.forEach(
+        button => {
+            button.classList.toggle(
+                "selected",
+                button.dataset.color === color
+            );
         }
-    }
-
-    map[y][x] = selectedTile;
-
-    drawMap();
+    );
 }
 
 
 /*
- * 팔레트 선택
+ * 오브젝트 버튼 클릭
  */
 
-paletteButtons.forEach(button => {
+objectButtons.forEach(button => {
 
     button.addEventListener(
         "click",
         () => {
 
-            selectedTile =
-                button.dataset.tile;
-
-            paletteButtons.forEach(
-                otherButton => {
-
-                    otherButton.classList.remove(
-                        "selected"
-                    );
-                }
-            );
-
-            button.classList.add(
-                "selected"
+            selectObject(
+                button.dataset.object
             );
         }
     );
+
 });
+
+
+/*
+ * 색상 버튼 클릭
+ */
+
+colorButtons.forEach(button => {
+
+    button.addEventListener(
+        "click",
+        () => {
+
+            selectColor(
+                button.dataset.color
+            );
+        }
+    );
+
+});
+
+
+/*
+ * 키보드 입력
+ *
+ * 1 = AIR
+ * 2 = BLOCK
+ * 3 = SPIKE
+ * 4 = PLAYER
+ * 5 = GOAL
+ */
+
+window.addEventListener(
+    "keydown",
+    event => {
+
+        const keyMap = {
+            "1": ".",
+            "2": "#",
+            "3": "^",
+            "4": "@",
+            "5": "$"
+        };
+
+        const object =
+            keyMap[event.key];
+
+        if (!object) {
+            return;
+        }
+
+        selectObject(object);
+    }
+);
+
+
+/*
+ * 맵 칸에 현재 선택 적용
+ */
+
+function paintCell(x, y) {
+
+    objectMap[y][x] =
+        selectedObject;
+
+
+    /*
+     * 공기는 색상도 제거
+     */
+
+    if (selectedObject === ".") {
+
+        colorMap[y][x] = ".";
+
+    } else {
+
+        colorMap[y][x] =
+            selectedColor;
+    }
+
+
+    draw();
+}
 
 
 /*
@@ -466,22 +538,18 @@ canvas.addEventListener(
     "mousedown",
     event => {
 
-        if (event.button !== 0) {
+        isMouseDown = true;
+
+        const cell =
+            getCellFromMouse(event);
+
+        if (!cell) {
             return;
         }
 
-        isDrawing = true;
-
-        const position =
-            getMapPosition(event);
-
-        if (!position) {
-            return;
-        }
-
-        placeTile(
-            position.x,
-            position.y
+        paintCell(
+            cell.x,
+            cell.y
         );
     }
 );
@@ -490,58 +558,48 @@ canvas.addEventListener(
 /*
  * 마우스 이동
  *
- * 누르고 드래그하면 계속 칠한다.
+ * 누른 상태에서 드래그 페인팅
  */
 
 canvas.addEventListener(
     "mousemove",
     event => {
 
-        if (!isDrawing) {
+        if (!isMouseDown) {
             return;
         }
 
-        const position =
-            getMapPosition(event);
+        const cell =
+            getCellFromMouse(event);
 
-        if (!position) {
+        if (!cell) {
             return;
         }
 
-        /*
-         * @와 $는 드래그 배치하지 않는다.
-         */
-
-        if (
-            selectedTile === "@" ||
-            selectedTile === "$"
-        ) {
-            return;
-        }
-
-        map[position.y][position.x] =
-            selectedTile;
-
-        drawMap();
+        paintCell(
+            cell.x,
+            cell.y
+        );
     }
 );
 
 
 /*
- * 마우스 떼기
+ * 마우스 버튼 해제
  */
 
 window.addEventListener(
     "mouseup",
     () => {
 
-        isDrawing = false;
+        isMouseDown = false;
+
     }
 );
 
 
 /*
- * 우클릭 = 지우기
+ * 우클릭 메뉴 방지
  */
 
 canvas.addEventListener(
@@ -550,16 +608,6 @@ canvas.addEventListener(
 
         event.preventDefault();
 
-        const position =
-            getMapPosition(event);
-
-        if (!position) {
-            return;
-        }
-
-        map[position.y][position.x] = ".";
-
-        drawMap();
     }
 );
 
@@ -572,144 +620,138 @@ clearButton.addEventListener(
     "click",
     () => {
 
-        map = createEmptyMap();
+        colorMap =
+            createColorMap();
 
-        drawMap();
+        objectMap =
+            createObjectMap();
+
+        draw();
+
     }
 );
 
 
 /*
- * Map → 문자열
+ * 현재 맵을 JS 코드 형태로 변환
  */
 
-function mapToString() {
+function createMapCode() {
 
-    return map
-        .map(row => row.join(""))
-        .join("\n");
-}
+    const colorLines =
+        colorMap.map(
+            row => row.join("")
+        );
+
+    const objectLines =
+        objectMap.map(
+            row => row.join("")
+        );
 
 
-/*
- * Map → JavaScript 코드
- */
+    const colorText =
+        colorLines.join("\n");
 
-function generateMapCode() {
+    const objectText =
+        objectLines.join("\n");
 
-    const mapString =
-        mapToString();
 
     return `{
-    map: \`
-${mapString}
+    color: \`
+${colorText}
+    \`,
+
+    object: \`
+${objectText}
     \`
 }`;
 }
 
 
 /*
- * SAVE
- *
- * 현재 맵을 브라우저 localStorage에 저장한다.
+ * Player / Goal 검사
  */
 
-saveButton.addEventListener(
-    "click",
-    () => {
+function validateMap() {
 
-        localStorage.setItem(
-            "layer-s-editor-map",
-            JSON.stringify(map)
+    let playerCount = 0;
+    let goalCount = 0;
+
+
+    for (
+        let y = 0;
+        y < MAP_HEIGHT;
+        y++
+    ) {
+
+        for (
+            let x = 0;
+            x < MAP_WIDTH;
+            x++
+        ) {
+
+            const object =
+                objectMap[y][x];
+
+            if (object === "@") {
+                playerCount++;
+            }
+
+            if (object === "$") {
+                goalCount++;
+            }
+        }
+    }
+
+
+    if (playerCount === 0) {
+
+        alert(
+            "PLAYER(@)가 없습니다."
         );
+
+        return false;
     }
-);
 
 
-/*
- * LOAD
- *
- * 저장된 맵을 불러온다.
- */
+    if (playerCount > 1) {
 
-loadButton.addEventListener(
-    "click",
-    () => {
+        alert(
+            "PLAYER(@)는 하나만 존재해야 합니다."
+        );
 
-        const saved =
-            localStorage.getItem(
-                "layer-s-editor-map"
-            );
-
-        if (!saved) {
-            return;
-        }
-
-        try {
-
-            const loaded =
-                JSON.parse(saved);
-
-            if (
-                !Array.isArray(loaded) ||
-                loaded.length !== MAP_HEIGHT
-            ) {
-                throw new Error(
-                    "Invalid map height."
-                );
-            }
-
-            for (const row of loaded) {
-
-                if (
-                    !Array.isArray(row) ||
-                    row.length !== MAP_WIDTH
-                ) {
-                    throw new Error(
-                        "Invalid map width."
-                    );
-                }
-
-                for (const tile of row) {
-
-                    if (
-                        !TILE_CHARS.includes(tile)
-                    ) {
-                        throw new Error(
-                            `Invalid tile: ${tile}`
-                        );
-                    }
-                }
-            }
-
-            map = loaded;
-
-            drawMap();
-
-        } catch (error) {
-
-            console.error(
-                "Failed to load map:",
-                error
-            );
-        }
+        return false;
     }
-);
+
+
+    if (goalCount > 1) {
+
+        alert(
+            "GOAL($)은 하나만 존재해야 합니다."
+        );
+
+        return false;
+    }
+
+
+    return true;
+}
 
 
 /*
  * COPY CODE
- *
- * 현재 맵을 LAYER:S map 형식으로
- * 클립보드에 복사한다.
  */
 
 copyButton.addEventListener(
     "click",
     async () => {
 
+        if (!validateMap()) {
+            return;
+        }
+
         const code =
-            generateMapCode();
+            createMapCode();
 
         try {
 
@@ -722,19 +764,18 @@ copyButton.addEventListener(
 
             setTimeout(
                 () => {
-
                     copyButton.textContent =
                         "COPY CODE";
-
                 },
                 1000
             );
 
         } catch (error) {
 
-            console.error(
-                "Failed to copy:",
-                error
+            console.error(error);
+
+            alert(
+                "코드를 복사할 수 없습니다."
             );
         }
     }
@@ -742,7 +783,118 @@ copyButton.addEventListener(
 
 
 /*
- * 초기 화면
+ * SAVE
+ *
+ * 브라우저 LocalStorage에 저장
  */
 
-drawMap();
+saveButton.addEventListener(
+    "click",
+    () => {
+
+        const data = {
+            color: colorMap,
+            object: objectMap
+        };
+
+        localStorage.setItem(
+            "layer-s-map",
+            JSON.stringify(data)
+        );
+
+
+        saveButton.textContent =
+            "SAVED";
+
+        setTimeout(
+            () => {
+
+                saveButton.textContent =
+                    "SAVE";
+
+            },
+            1000
+        );
+    }
+);
+
+
+/*
+ * LOAD
+ */
+
+loadButton.addEventListener(
+    "click",
+    () => {
+
+        const saved =
+            localStorage.getItem(
+                "layer-s-map"
+            );
+
+        if (!saved) {
+
+            alert(
+                "저장된 맵이 없습니다."
+            );
+
+            return;
+        }
+
+
+        try {
+
+            const data =
+                JSON.parse(saved);
+
+
+            /*
+             * 기본적인 데이터 검사
+             */
+
+            if (
+                !Array.isArray(data.color) ||
+                !Array.isArray(data.object) ||
+                data.color.length !== MAP_HEIGHT ||
+                data.object.length !== MAP_HEIGHT
+            ) {
+
+                throw new Error(
+                    "Invalid map size"
+                );
+            }
+
+
+            colorMap =
+                data.color.map(
+                    row => [...row]
+                );
+
+            objectMap =
+                data.object.map(
+                    row => [...row]
+                );
+
+
+            draw();
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(
+                "맵 데이터를 불러올 수 없습니다."
+            );
+        }
+    }
+);
+
+
+/*
+ * 초기화
+ */
+
+resizeCanvas();
+selectObject("#");
+selectColor("W");
+draw();

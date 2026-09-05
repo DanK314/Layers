@@ -1,6 +1,6 @@
 const stage = [
     {
-        map: `
+        color: `
 ................
 ................
 ................
@@ -15,12 +15,31 @@ const stage = [
 ................
 ................
 ................
-@..............$
+.W............W.
 WWWWWWWWWWWWWWWW
+    `,
+
+        object: `
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+.@............$.
+################
     `
     },
     {
-        map: `
+        color: `
 ................
 ................
 ................
@@ -35,12 +54,50 @@ WWWWWWWWWWWWWWWW
 ................
 ................
 ................
-@..............$
+.W............W.
 WWWWWW....WWWWWW
+    `,
+
+        object: `
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+.@............$.
+######....######
     `
     },
     {
-        map: `
+        color: `
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+W..............W
+WW....WWWW....WW
+    `,
+
+        object: `
 ................
 ................
 ................
@@ -56,147 +113,7 @@ WWWWWW....WWWWWW
 ................
 ................
 @..............$
-WW...W....W...WW
-    `
-    },
-    {
-        map: `
-................
-................
-................
-................
-................
-................
-................
-................
-................
-................
-................
-.......WW.......
-.......WW.......
-......WWWW......
-@..W..WWWW..W..$
-WW.W.WWWWWW.W.WW
-    `
-    },
-    {
-        map: `
-................
-................
-................
-................
-................
-................
-................
-................
-................
-................
-................
-................
-................
-WWWWWWWWWWWWWWWW
-@..............$
-WW.W.W.W.W.W.WWW
-    `
-    },
-    {
-        map: `
-................
-................
-................
-................
-................
-................
-................
-................
-................
-................
-................
-...............$
-.............BBB
-........GGG.....
-@..RRR..........
-W...............
-    `
-    },
-    {
-        map: `
-................
-................
-................
-................
-................
-................
-................
-................
-................
-................
-................
-...............$
-.............YYY
-........MMM.....
-@..CCC..........
-W...............
-    `
-    },
-    {
-        map: `
-....RR.GG.BB....
-....RR.GG.BB....
-....RR.GG.BB....
-.......GG.BB....
-..$.......BB....
-..W.............
-....RR..........
-....RR.GG.......
-....RR.GG.BB....
-....RR.GG.BB....
-....RR.GG.BB...W
-....RR.GG.BBW...
-....RR.GGWBB....
-....RRWGG.BB....
-@..WRR.GG.BB....
-W...RR.GG.BB....
-    `
-    },
-    {
-        map: `
-...............W
-........W.B....W
-........W.B.BBBW
-.......WG.WWRRRW
-.......WG.WWGGGW
-........W.RWBBBW
-........W.RWRRRW
-.......WB.WWGGGW
-.......WB.WWBBBW
-........W.GWRRRW
-........W.GWGGGW
-.........RWWBBBW
-.Y.M.C...RWWRRRW
-.Y.M.C...W.WGGGW
-@Y.M.C...W.W.$.W
-WYBMGCR..W.WWWWW
-    `
-    },
-    {
-        map: `
-................
-................
-................
-...............$
-...B.....G.....R
-..W.............
-................
-W.WWWWWWWWWWWWWW
-W....R..C.W.....
-WCC..R..C.W.....
-WWWWWWWWW.WWWWWW
-........W.......
-..MYC...WW......
-..MYC...WWWWWWW.
-@.MYC...........
-W.....WWW.R.G.BW
+##....####....##
     `
     }
 ];
@@ -207,13 +124,24 @@ export class MapParser {
 
     static parse(chunk) {
 
-        const rows = chunk.map
+        /*
+         * Color / Object 레이어 파싱
+         */
+
+        const colorRows = chunk.color
             .trim()
             .split("\n")
             .map(row => row.trim());
 
-        const height = rows.length;
-        const width = rows[0].length;
+        const objectRows = chunk.object
+            .trim()
+            .split("\n")
+            .map(row => row.trim());
+
+
+        const height = colorRows.length;
+        const width = colorRows[0].length;
+
 
         /*
          * 맵 크기 검사
@@ -222,16 +150,31 @@ export class MapParser {
         if (height !== 16) {
 
             throw new Error(
-                `Map height must be 16. Got ${height}.`
+                `Color map height must be 16. Got ${height}.`
             );
         }
 
+        if (objectRows.length !== 16) {
+
+            throw new Error(
+                `Object map height must be 16. Got ${objectRows.length}.`
+            );
+        }
+
+
         for (let y = 0; y < height; y++) {
 
-            if (rows[y].length !== 16) {
+            if (colorRows[y].length !== 16) {
 
                 throw new Error(
-                    `Map width must be 16 at row ${y}. Got ${rows[y].length}.`
+                    `Color map width must be 16 at row ${y}. Got ${colorRows[y].length}.`
+                );
+            }
+
+            if (objectRows[y].length !== 16) {
+
+                throw new Error(
+                    `Object map width must be 16 at row ${y}. Got ${objectRows[y].length}.`
                 );
             }
         }
@@ -239,15 +182,6 @@ export class MapParser {
 
         /*
          * 최종 파싱 결과
-         *
-         * map[y][x]
-         *
-         * 예:
-         *
-         * R → { R: true,  G: false, B: false }
-         * Y → { R: true,  G: true,  B: false }
-         * C → { R: false, G: true,  B: true  }
-         * W → { R: true,  G: true,  B: true  }
          */
 
         const result = {
@@ -269,159 +203,92 @@ export class MapParser {
 
             const row = [];
 
+
             for (let x = 0; x < width; x++) {
 
-                const tile = rows[y][x];
+                const color = colorRows[y][x];
+                const object = objectRows[y][x];
 
-                switch (tile) {
 
-                    // -----------------------------------------
-                    // Empty
-                    // -----------------------------------------
+                /*
+                 * 색상 → RGB 데이터
+                 */
+
+                let tile = {
+
+                    R: false,
+                    G: false,
+                    B: false
+                };
+
+
+                switch (color) {
 
                     case ".":
-
-                        row.push({
-                            R: false,
-                            G: false,
-                            B: false
-                        });
-
                         break;
-
-
-                    // -----------------------------------------
-                    // Red
-                    // -----------------------------------------
 
                     case "R":
-
-                        row.push({
-                            R: true,
-                            G: false,
-                            B: false
-                        });
-
+                        tile.R = true;
                         break;
-
-
-                    // -----------------------------------------
-                    // Green
-                    // -----------------------------------------
 
                     case "G":
-
-                        row.push({
-                            R: false,
-                            G: true,
-                            B: false
-                        });
-
+                        tile.G = true;
                         break;
-
-
-                    // -----------------------------------------
-                    // Blue
-                    // -----------------------------------------
 
                     case "B":
-
-                        row.push({
-                            R: false,
-                            G: false,
-                            B: true
-                        });
-
+                        tile.B = true;
                         break;
-
-
-                    // -----------------------------------------
-                    // Yellow = R + G
-                    // -----------------------------------------
 
                     case "Y":
-
-                        row.push({
-                            R: true,
-                            G: true,
-                            B: false
-                        });
-
+                        tile.R = true;
+                        tile.G = true;
                         break;
-
-
-                    // -----------------------------------------
-                    // Magenta = R + B
-                    // -----------------------------------------
 
                     case "M":
-
-                        row.push({
-                            R: true,
-                            G: false,
-                            B: true
-                        });
-
+                        tile.R = true;
+                        tile.B = true;
                         break;
-
-
-                    // -----------------------------------------
-                    // Cyan = G + B
-                    // -----------------------------------------
 
                     case "C":
-
-                        row.push({
-                            R: false,
-                            G: true,
-                            B: true
-                        });
-
+                        tile.G = true;
+                        tile.B = true;
                         break;
-
-
-                    // -----------------------------------------
-                    // White = R + G + B
-                    // -----------------------------------------
 
                     case "W":
+                        tile.R = true;
+                        tile.G = true;
+                        tile.B = true;
+                        break;
 
-                        row.push({
-                            R: true,
-                            G: true,
-                            B: true
-                        });
+                    default:
+
+                        throw new Error(
+                            `Unknown color "${color}" at (${x}, ${y})`
+                        );
+                }
+
+
+                /*
+                 * 오브젝트 처리
+                 */
+
+                switch (object) {
+
+                    // Empty
+                    case ".":
+                        break;
+
+
+                    // Block
+                    case "#":
+
+                        tile.type = "block";
 
                         break;
 
 
-                    // -----------------------------------------
-                    // Spike
-                    // -----------------------------------------
-
-                    case "^":
-
-                        row.push({
-                            R: true,
-                            G: true,
-                            B: true,
-                            type: "spike"
-                        });
-
-                        break;
-
-
-                    // -----------------------------------------
                     // Player
-                    // -----------------------------------------
-
                     case "@":
-
-                        row.push({
-                            R: false,
-                            G: false,
-                            B: false
-                        });
 
                         result.objects.player.push({
                             x: x,
@@ -431,17 +298,8 @@ export class MapParser {
                         break;
 
 
-                    // -----------------------------------------
                     // Goal
-                    // -----------------------------------------
-
                     case "$":
-
-                        row.push({
-                            R: false,
-                            G: false,
-                            B: false
-                        });
 
                         result.objects.goal.push({
                             x: x,
@@ -451,17 +309,25 @@ export class MapParser {
                         break;
 
 
-                    // -----------------------------------------
-                    // Unknown
-                    // -----------------------------------------
+                    // Spike
+                    case "^":
+
+                        tile.type = "spike";
+
+                        break;
+
 
                     default:
 
                         throw new Error(
-                            `Unknown tile "${tile}" at (${x}, ${y})`
+                            `Unknown object "${object}" at (${x}, ${y})`
                         );
                 }
+
+
+                row.push(tile);
             }
+
 
             result.map.push(row);
         }
