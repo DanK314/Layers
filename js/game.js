@@ -9,6 +9,8 @@ export class Game {
 
     #canvas;
     #ctx;
+    #lightCanvas;
+    #lightCtx;
 
     #blocks = [];
     #spikes = [];
@@ -16,6 +18,9 @@ export class Game {
     #particleSpawnTime = 0;
     #spawnElapsed = 0;
     #spawnDuration = 0.7;
+    #explosionLightTime = 0;
+    #explosionLightDuration = 0.5;
+    #explosionLightPoint = null;
     #player;
     #goal;
 
@@ -43,6 +48,8 @@ export class Game {
 
         this.#canvas = canvas;
         this.#ctx = canvas.getContext("2d");
+        this.#lightCanvas = document.createElement("canvas");
+        this.#lightCtx = this.#lightCanvas.getContext("2d");
 
         this.#resize();
 
@@ -65,6 +72,8 @@ export class Game {
 
         this.#canvas.width = window.innerWidth;
         this.#canvas.height = window.innerHeight;
+        this.#lightCanvas.width = this.#canvas.width;
+        this.#lightCanvas.height = this.#canvas.height;
 
         const worldWidth =
             this.#mapWidth * this.#tileSize;
@@ -93,6 +102,8 @@ export class Game {
         this.#particles = [];
         this.#particleSpawnTime = 0;
         this.#spawnElapsed = 0;
+        this.#explosionLightTime = 0;
+        this.#explosionLightPoint = null;
         this.#goal = null;
 
         this.#createBlocks(stage.map);
@@ -146,6 +157,35 @@ export class Game {
         this.#particles.push(particle);
     }
 
+    #explodePlayer() {
+
+        const explosionPoint = {
+            x: this.#player.x + this.#player.w / 2,
+            y: this.#player.y + this.#player.h / 2
+        };
+
+        for (let index = 0; index < 28; index++) {
+
+            if (this.#particles.length >= 60) {
+                break;
+            }
+
+            this.#particles.push(
+                new Particle(
+                    explosionPoint.x,
+                    explosionPoint.y,
+                    true
+                )
+            );
+        }
+
+        this.#explosionLightPoint = explosionPoint;
+        this.#explosionLightTime = this.#explosionLightDuration;
+        this.#player.respawn();
+        this.#spawnElapsed = 0;
+        this.#particleSpawnTime = 0;
+    }
+
     #createBlocks(map) {
 
         for (let y = 0; y < map.length; y++) {
@@ -155,10 +195,13 @@ export class Game {
                 const tile = map[y][x];
 
                 /*
-                 * 블록으로 지정된 타일만 Block으로 생성한다.
+                 * 블록과 스파이크만 게임 오브젝트로 생성한다.
                  */
 
-                if (tile.type !== "block") {
+                if (
+                    tile.type !== "block" &&
+                    tile.type !== "spike"
+                ) {
                     continue;
                 }
 
@@ -290,6 +333,11 @@ export class Game {
 
     update(deltaTime) {
 
+        this.#explosionLightTime = Math.max(
+            0,
+            this.#explosionLightTime - deltaTime
+        );
+
         if (this.#transitioning) {
             this.#updateTransition(deltaTime);
             return;
@@ -370,6 +418,42 @@ export class Game {
             }
         }
 
+        const playerArea =
+            this.#player.w * this.#player.h;
+
+        const stuckInBlock =
+            this.#blocks.some(block => {
+
+                if (!block.isSolid(this.#activeLayer)) {
+                    return false;
+                }
+
+                const overlapWidth =
+                    Math.min(
+                        this.#player.x + this.#player.w,
+                        block.x + block.w
+                    ) -
+                    Math.max(this.#player.x, block.x);
+
+                const overlapHeight =
+                    Math.min(
+                        this.#player.y + this.#player.h,
+                        block.y + block.h
+                    ) -
+                    Math.max(this.#player.y, block.y);
+
+                const overlapArea =
+                    Math.max(0, overlapWidth) *
+                    Math.max(0, overlapHeight);
+
+                return overlapArea >= playerArea / 2;
+            });
+
+        if (stuckInBlock) {
+            this.#explodePlayer();
+            return;
+        }
+
         for (const spike of this.#spikes) {
 
             if (!spike.isSolid(this.#activeLayer)) {
@@ -386,7 +470,7 @@ export class Game {
 
             if (colliding) {
 
-                this.#player.respawn();
+                this.#explodePlayer();
 
                 return;
             }
@@ -677,7 +761,63 @@ export class Game {
 
     #drawFlashlight() {
 
-        const ctx = this.#ctx;
+        const lightCtx = this.#lightCtx;
+
+        lightCtx.globalCompositeOperation = "source-over";
+        lightCtx.globalAlpha = 1;
+        lightCtx.fillStyle = "#000000";
+        lightCtx.fillRect(
+            0,
+            0,
+            this.#canvas.width,
+            this.#canvas.height
+        );
+
+        const drawLight = (centerX, centerY, radius, strength) => {
+
+            const gradient = lightCtx.createRadialGradient(
+                centerX,
+                centerY,
+                0,
+                centerX,
+                centerY,
+                radius
+            );
+
+            gradient.addColorStop(
+                0,
+                `rgba(0, 0, 0, ${strength})`
+            );
+
+            gradient.addColorStop(
+                0.35,
+                `rgba(0, 0, 0, ${strength * 0.95})`
+            );
+
+            gradient.addColorStop(
+                0.60,
+                `rgba(0, 0, 0, ${strength * 0.65})`
+            );
+
+            gradient.addColorStop(
+                0.80,
+                `rgba(0, 0, 0, ${strength * 0.25})`
+            );
+
+            gradient.addColorStop(
+                1,
+                "rgba(0, 0, 0, 0)"
+            );
+
+            lightCtx.globalCompositeOperation = "destination-out";
+            lightCtx.fillStyle = gradient;
+            lightCtx.fillRect(
+                0,
+                0,
+                this.#canvas.width,
+                this.#canvas.height
+            );
+        };
 
         const playerCenterX =
             this.#offsetX +
@@ -689,62 +829,106 @@ export class Game {
 
         const radius = 400 * this.#scale;
 
-        ctx.save();
+        drawLight(
+            playerCenterX,
+            playerCenterY,
+            radius,
+            1
+        );
 
-        /*
-         * Flashlight는 맵을 삭제하지 않고
-         * 검은색 투명 오버레이만 덮는다.
-         */
+        if (
+            this.#explosionLightPoint &&
+            this.#explosionLightTime > 0
+        ) {
+
+            const progress =
+                1 -
+                this.#explosionLightTime / this.#explosionLightDuration;
+
+            drawLight(
+                this.#offsetX + this.#explosionLightPoint.x * this.#scale,
+                this.#offsetY + this.#explosionLightPoint.y * this.#scale,
+                radius,
+                1 - progress
+            );
+        }
+
+        const ctx = this.#ctx;
+
+        ctx.save();
         ctx.globalCompositeOperation = "source-over";
+        ctx.drawImage(
+            this.#lightCanvas,
+            0,
+            0
+        );
+        ctx.restore();
+
+        this.#drawExplosionFlash();
+    }
+
+    #drawExplosionFlash() {
+
+        if (
+            !this.#explosionLightPoint ||
+            this.#explosionLightTime <= 0
+        ) {
+            return;
+        }
+
+        const progress =
+            1 -
+            this.#explosionLightTime / this.#explosionLightDuration;
+
+        const intensity =
+            Math.pow(1 - progress, 2) * 0.9;
+
+        const centerX =
+            this.#offsetX +
+            this.#explosionLightPoint.x * this.#scale;
+
+        const centerY =
+            this.#offsetY +
+            this.#explosionLightPoint.y * this.#scale;
+
+        const radius =
+            400 * this.#scale;
+
+        const ctx = this.#ctx;
+
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
 
         const gradient = ctx.createRadialGradient(
-            playerCenterX,
-            playerCenterY,
+            centerX,
+            centerY,
             0,
-            playerCenterX,
-            playerCenterY,
+            centerX,
+            centerY,
             radius
         );
 
-        /*
-         * 중심은 완전히 투명
-         */
         gradient.addColorStop(
             0,
-            "rgba(0, 0, 0, 0)"
+            `rgba(255, 255, 255, ${intensity})`
         );
 
-        /*
-         * 중심 주변은 아주 약하게 어둡게
-         */
         gradient.addColorStop(
             0.35,
-            "rgba(0, 0, 0, 0.05)"
-        );
-
-        /*
-         * 점점 어두워진다.
-         */
-        gradient.addColorStop(
-            0.60,
-            "rgba(0, 0, 0, 0.35)"
+            `rgba(255, 255, 255, ${intensity * 0.4})`
         );
 
         gradient.addColorStop(
-            0.80,
-            "rgba(0, 0, 0, 0.75)"
+            0.75,
+            `rgba(255, 255, 255, ${intensity * 0.08})`
         );
 
-        /*
-         * 손전등 범위 끝
-         */
         gradient.addColorStop(
             1,
-            "rgba(0, 0, 0, 1)"
+            "rgba(255, 255, 255, 0)"
         );
 
         ctx.fillStyle = gradient;
-
         ctx.fillRect(
             0,
             0,

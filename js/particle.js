@@ -11,16 +11,16 @@ export class Particle {
 
     size;
 
-    constructor(x, y) {
+    constructor(x, y, burst = false) {
 
         this.x = x;
         this.y = y;
 
         this.vx =
-            (Math.random() - 0.5) * 30;
+            (Math.random() - 0.5) * (burst ? 260 : 30);
 
         this.vy =
-            (Math.random() - 0.5) * 30;
+            (Math.random() - 0.5) * (burst ? 260 : 30);
 
         this.maxLife =
             1.5 + Math.random() * 1.5;
@@ -28,7 +28,9 @@ export class Particle {
         this.life = this.maxLife;
 
         this.size =
-            2 + Math.random() * 3;
+            burst
+                ? 3 + Math.random() * 4
+                : 2 + Math.random() * 3;
     }
 
     update(deltaTime) {
