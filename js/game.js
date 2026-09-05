@@ -1010,29 +1010,36 @@ export class Game {
     run() {
 
         let lastTime = performance.now();
+        let physicsAccumulator = 0;
+        const physicsStep = 1 / 60;
 
         const loop = (currentTime) => {
 
-            let deltaTime =
+            const frameDeltaTime =
                 (currentTime - lastTime) / 1000;
 
             lastTime = currentTime;
 
-            this.#frameTime = deltaTime * 1000;
-            this.#fps = deltaTime > 0 ? 1 / deltaTime : 0;
-            this.#elapsedTime += deltaTime;
+            this.#frameTime = frameDeltaTime * 1000;
+            this.#fps = frameDeltaTime > 0 ? 1 / frameDeltaTime : 0;
+            this.#elapsedTime += frameDeltaTime;
 
             /*
-             * 프레임이 순간적으로 크게 끊겼을 때
-             * 물체가 맵을 뚫고 지나가는 것을 방지한다.
+             * 실제 경과 시간을 고정 물리 스텝으로 누적한다.
+             * 디스플레이 주사율과 물리 속도를 분리한다.
              */
 
-            deltaTime = Math.min(
-                deltaTime,
-                1 / 30
+            physicsAccumulator += Math.min(
+                frameDeltaTime,
+                0.25
             );
 
-            this.update(deltaTime);
+            while (physicsAccumulator >= physicsStep) {
+
+                this.update(physicsStep);
+                physicsAccumulator -= physicsStep;
+            }
+
             this.draw();
 
             requestAnimationFrame(loop);
