@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="initial-scale=1.0">
@@ -8,17 +9,38 @@
     <link rel="stylesheet" href="style.css">
     <script src="js/main.js" type="module" defer></script>
 </head>
+
 <body>
     <div id="title-screen">
+
         <h1 id="logo-container">
-            <img src="logo.png" id="logo" width="80vw">
+            <img src="logo.png" id="logo">
         </h1>
-        <p id="start-helper">
-            PRESS ENTER TO START
-        </p>
+
+        <div id="menu">
+
+            <div class="menu-item selected" data-menu="play">
+                PLAY
+            </div>
+
+            <div class="menu-item" data-menu="map-maker">
+                MAP MAKER
+            </div>
+
+        </div>
+
+        <div id="menu-helper">
+            <span>↑ ↓</span>
+            <span>MOVE</span>
+
+            <span>ENTER</span>
+            <span>SELECT</span>
+        </div>
+
     </div>
     <div id="game-screen">
         <canvas id="canvas"></canvas>
     </div>
 </body>
+
 </html>

@@ -14,6 +14,8 @@ export class Game {
     #spikes = [];
     #particles = [];
     #particleSpawnTime = 0;
+    #spawnElapsed = 0;
+    #spawnDuration = 0.7;
     #player;
     #goal;
 
@@ -27,7 +29,7 @@ export class Game {
     #offsetX = 0;
     #offsetY = 0;
 
-    #stageIndex = 0;
+    #stageIndex = stageArray.length - 2;
     #activeLayer = "R";
     #fps = 0;
     #frameTime = 0;
@@ -88,6 +90,9 @@ export class Game {
 
         this.#blocks = [];
         this.#spikes = [];
+        this.#particles = [];
+        this.#particleSpawnTime = 0;
+        this.#spawnElapsed = 0;
         this.#goal = null;
 
         this.#createBlocks(stage.map);
@@ -102,8 +107,8 @@ export class Game {
 
         this.#player = new Player(
             this.#ctx,
-            playerStart.x * this.#tileSize,
-            playerStart.y * this.#tileSize
+            playerStart.x * this.#tileSize + (this.#tileSize - 32) / 2,
+            playerStart.y * this.#tileSize + (this.#tileSize - 32) / 2
         );
 
         this.#spawnPoint = {
@@ -287,6 +292,32 @@ export class Game {
 
         if (this.#transitioning) {
             this.#updateTransition(deltaTime);
+            return;
+        }
+
+        if (this.#spawnElapsed < this.#spawnDuration) {
+
+            this.#spawnElapsed = Math.min(
+                this.#spawnElapsed + deltaTime,
+                this.#spawnDuration
+            );
+
+            this.#particleSpawnTime -= deltaTime;
+
+            if (this.#particleSpawnTime <= 0) {
+
+                this.#createParticle(this.#spawnPoint);
+                this.#particleSpawnTime = 0.03;
+            }
+
+            for (const particle of this.#particles) {
+                particle.update(deltaTime);
+            }
+
+            this.#particles = this.#particles.filter(
+                particle => particle.alive
+            );
+
             return;
         }
 
@@ -567,11 +598,52 @@ export class Game {
                 this.#player.y * this.#scale
             );
 
+        const spawnProgress =
+            Math.min(
+                1,
+                this.#spawnElapsed / this.#spawnDuration
+            );
+
+        const easedSpawnProgress =
+            1 - Math.pow(1 - spawnProgress, 3);
+
+        let portalScale = 1;
+
+        if (this.#transitioning && !this.#transitionLoaded) {
+
+            const transitionProgress =
+                Math.min(
+                    1,
+                    this.#transitionTime / (this.#transitionDuration / 2)
+                );
+
+            portalScale =
+                Math.pow(1 - transitionProgress, 2);
+        }
+
+        const playerDrawScale =
+            this.#scale *
+            (0.35 + easedSpawnProgress * 0.65) *
+            portalScale;
+
+        const playerDrawX =
+            playerScreenX +
+            (this.#player.w * this.#scale - this.#player.w * playerDrawScale) / 2;
+
+        const playerDrawY =
+            playerScreenY +
+            (this.#player.h * this.#scale - this.#player.h * playerDrawScale) / 2;
+
+        ctx.save();
+        ctx.globalAlpha = easedSpawnProgress;
+
         this.#player.draw(
-            playerScreenX,
-            playerScreenY,
-            this.#scale
+            playerDrawX,
+            playerDrawY,
+            playerDrawScale
         );
+
+        ctx.restore();
 
         /*
  * Goal 렌더링
@@ -615,7 +687,7 @@ export class Game {
             this.#offsetY +
             (this.#player.y + this.#player.h / 2) * this.#scale;
 
-        const radius = 300 * this.#scale;
+        const radius = 400 * this.#scale;
 
         ctx.save();
 

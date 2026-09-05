@@ -117,7 +117,7 @@ export class Player extends GameObject {
          * 중력 자체는 BoxCollider가 담당한다.
          */
 
-        this.vy = -800;
+        this.vy = -820;
 
         this.#isGrounded = false;
     }
