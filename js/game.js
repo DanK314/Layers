@@ -29,7 +29,7 @@ export class Game {
     #offsetX = 0;
     #offsetY = 0;
 
-    #stageIndex = stageArray.length - 2;
+    #stageIndex = 0;
     #activeLayer = "R";
     #fps = 0;
     #frameTime = 0;
