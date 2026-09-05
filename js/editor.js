@@ -58,6 +58,7 @@ const TILE_CHARS = [
     "M",
     "C",
     "W",
+    "^",
     "@",
     "$"
 ];
@@ -139,6 +140,9 @@ function getTileColor(tile) {
         case "W":
             return "#FFFFFF";
 
+        case "^":
+            return "#EAF6FF";
+
         case "@":
             return "#FFFFFF";
 
@@ -198,31 +202,52 @@ function drawMap() {
 
             ctx.save();
 
-            /*
-             * Goal은 검은색 + 흰색 Glow
-             */
-
             if (tile === "$") {
 
                 ctx.fillStyle = "#000000";
-
                 ctx.shadowColor = "#FFFFFF";
                 ctx.shadowBlur = 18;
+
+                ctx.fillRect(
+                    x * TILE_SIZE + 1,
+                    y * TILE_SIZE + 1,
+                    TILE_SIZE - 2,
+                    TILE_SIZE - 2
+                );
+
+            } else if (tile === "^") {
+
+                const px = x * TILE_SIZE;
+                const py = y * TILE_SIZE;
+                const s = TILE_SIZE;
+                const cx = px + s / 2;
+                const cy = py + s / 2;
+
+                ctx.fillStyle = color;
+                ctx.shadowColor = "#FFFFFF";
+                ctx.shadowBlur = 10;
+
+                ctx.beginPath();
+                ctx.moveTo(cx, py + 2);
+                ctx.lineTo(px + s - 2, cy);
+                ctx.lineTo(cx, py + s - 2);
+                ctx.lineTo(px + 2, cy);
+                ctx.closePath();
+                ctx.fill();
 
             } else {
 
                 ctx.fillStyle = color;
-
                 ctx.shadowColor = color;
                 ctx.shadowBlur = 8;
-            }
 
-            ctx.fillRect(
-                x * TILE_SIZE + 1,
-                y * TILE_SIZE + 1,
-                TILE_SIZE - 2,
-                TILE_SIZE - 2
-            );
+                ctx.fillRect(
+                    x * TILE_SIZE + 1,
+                    y * TILE_SIZE + 1,
+                    TILE_SIZE - 2,
+                    TILE_SIZE - 2
+                );
+            }
 
             ctx.restore();
         }

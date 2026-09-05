@@ -3,6 +3,7 @@ import { stageArray } from "./map.js";
 import { Player } from "./player.js";
 import { Particle } from "./particle.js";
 import { Goal } from "./goal.js";
+import { Spike } from "./spike.js";
 
 export class Game {
 
@@ -10,6 +11,7 @@ export class Game {
     #ctx;
 
     #blocks = [];
+    #spikes = [];
     #particles = [];
     #particleSpawnTime = 0;
     #player;
@@ -29,6 +31,7 @@ export class Game {
     #activeLayer = "R";
     #fps = 0;
     #frameTime = 0;
+    #elapsedTime = 0;
     #transitionTime = 0;
     #transitionDuration = 0.6;
     #transitioning = false;
@@ -84,6 +87,7 @@ export class Game {
         const stage = stageArray[index];
 
         this.#blocks = [];
+        this.#spikes = [];
         this.#goal = null;
 
         this.#createBlocks(stage.map);
@@ -101,6 +105,11 @@ export class Game {
             playerStart.x * this.#tileSize,
             playerStart.y * this.#tileSize
         );
+
+        this.#spawnPoint = {
+            x: playerStart.x * this.#tileSize + this.#tileSize / 2,
+            y: playerStart.y * this.#tileSize + this.#tileSize / 2
+        };
 
         /*
          * Goal 생성
@@ -139,6 +148,19 @@ export class Game {
             for (let x = 0; x < map[y].length; x++) {
 
                 const tile = map[y][x];
+
+                if (tile.type === "spike") {
+                    this.#spikes.push(
+                        new Spike(
+                            this.#ctx,
+                            x * this.#tileSize,
+                            y * this.#tileSize,
+                            this.#tileSize
+                        )
+                    );
+
+                    continue;
+                }
 
                 /*
                  * RGB 성분이 하나도 없다면 빈 칸이다.
@@ -302,6 +324,22 @@ export class Game {
                 this.#player.setGrounded(true);
             }
         }
+
+        for (const spike of this.#spikes) {
+
+            const spikeBox = spike.hitbox;
+
+            const colliding =
+                this.#player.x < spikeBox.x + spikeBox.w &&
+                this.#player.x + this.#player.w > spikeBox.x &&
+                this.#player.y < spikeBox.y + spikeBox.h &&
+                this.#player.y + this.#player.h > spikeBox.y;
+
+            if (colliding) {
+                this.#player.respawn();
+                return;
+            }
+        }
         /*
  * 파티클 업데이트
  */
@@ -404,6 +442,19 @@ export class Game {
 
         ctx.globalCompositeOperation = "screen";
 
+        for (const spike of this.#spikes) {
+
+            const screenX =
+                this.#offsetX +
+                spike.x * this.#scale;
+
+            const screenY =
+                this.#offsetY +
+                spike.y * this.#scale;
+
+            spike.draw(screenX, screenY, this.#scale);
+        }
+
         /*
          * 스폰 / 골인 파티클
          */
@@ -466,7 +517,7 @@ export class Game {
             ctx.globalAlpha =
                 block.isSolid(this.#activeLayer)
                     ? 1
-                    : 0.2;
+                    : 0.3;
 
             block.draw(
                 screenX,
@@ -476,8 +527,9 @@ export class Game {
         }
 
         ctx.globalAlpha = 1;
-
         ctx.globalCompositeOperation = "source-over";
+
+        this.#drawFlashlight();
 
         /*
          * Player 화면 좌표 계산
@@ -530,6 +582,87 @@ export class Game {
         this.#drawTransition();
     }
 
+
+    #drawFlashlight() {
+
+        const ctx = this.#ctx;
+
+        const playerCenterX =
+            this.#offsetX +
+            (this.#player.x + this.#player.w / 2) * this.#scale;
+
+        const playerCenterY =
+            this.#offsetY +
+            (this.#player.y + this.#player.h / 2) * this.#scale;
+
+        const radius = 300 * this.#scale;
+
+        ctx.save();
+
+        /*
+         * Flashlight는 맵을 삭제하지 않고
+         * 검은색 투명 오버레이만 덮는다.
+         */
+        ctx.globalCompositeOperation = "source-over";
+
+        const gradient = ctx.createRadialGradient(
+            playerCenterX,
+            playerCenterY,
+            0,
+            playerCenterX,
+            playerCenterY,
+            radius
+        );
+
+        /*
+         * 중심은 완전히 투명
+         */
+        gradient.addColorStop(
+            0,
+            "rgba(0, 0, 0, 0)"
+        );
+
+        /*
+         * 중심 주변은 아주 약하게 어둡게
+         */
+        gradient.addColorStop(
+            0.35,
+            "rgba(0, 0, 0, 0.05)"
+        );
+
+        /*
+         * 점점 어두워진다.
+         */
+        gradient.addColorStop(
+            0.60,
+            "rgba(0, 0, 0, 0.35)"
+        );
+
+        gradient.addColorStop(
+            0.80,
+            "rgba(0, 0, 0, 0.75)"
+        );
+
+        /*
+         * 손전등 범위 끝
+         */
+        gradient.addColorStop(
+            1,
+            "rgba(0, 0, 0, 1)"
+        );
+
+        ctx.fillStyle = gradient;
+
+        ctx.fillRect(
+            0,
+            0,
+            this.#canvas.width,
+            this.#canvas.height
+        );
+
+        ctx.restore();
+    }
+
     #drawTransition() {
 
         if (!this.#transitioning) {
@@ -580,9 +713,18 @@ export class Game {
 
         ctx.textAlign = "left";
 
+        const fpsText = `FPS ${this.#fps.toFixed(0)}  ${this.#frameTime.toFixed(1)} ms`;
+        const timerText = `TIME ${this.#elapsedTime.toFixed(1)} s`;
+
         ctx.fillText(
-            `FPS ${this.#fps.toFixed(0)}  ${this.#frameTime.toFixed(1)} ms`,
+            fpsText,
             padding,
+            padding
+        );
+
+        ctx.fillText(
+            timerText,
+            padding + 220,
             padding
         );
 
@@ -602,6 +744,7 @@ export class Game {
 
             this.#frameTime = deltaTime * 1000;
             this.#fps = deltaTime > 0 ? 1 / deltaTime : 0;
+            this.#elapsedTime += deltaTime;
 
             /*
              * 프레임이 순간적으로 크게 끊겼을 때

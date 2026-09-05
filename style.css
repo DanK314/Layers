@@ -135,6 +135,8 @@ body {
 #start-helper {
     position: absolute;
 
+    text-align: center;
+
     bottom: 8vh;
 
     margin: 0;
