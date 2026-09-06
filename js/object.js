@@ -99,4 +99,8 @@ export class GameObject {
             this.h * scale
         );
     }
+
+    setGlowColor(color) {
+        this.#drawer.setGlowColor(color);
+    }
 }

@@ -1,5 +1,7 @@
 import { GameObject } from "./object.js";
 
+const jumpSoundVolume = 0.1;
+
 export class Player extends GameObject {
 
     #keys = {
@@ -17,6 +19,7 @@ export class Player extends GameObject {
 
     #spawnX;
     #spawnY;
+    #jumpSound = new Audio("./sfx/Jump.wav");
 
     constructor(ctx, x, y) {
 
@@ -120,6 +123,10 @@ export class Player extends GameObject {
         this.vy = -820;
 
         this.#isGrounded = false;
+
+        this.#jumpSound.volume = jumpSoundVolume;
+        this.#jumpSound.currentTime = 0;
+        this.#jumpSound.play().catch(() => {});
     }
 
     respawn() {

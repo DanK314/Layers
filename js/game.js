@@ -5,6 +5,10 @@ import { Particle } from "./particle.js";
 import { Goal } from "./goal.js";
 import { Spike } from "./spike.js";
 
+const rSoundVolume = 0.5;
+const gSoundVolume = rSoundVolume * 0.5;
+const bSoundVolume = rSoundVolume * 0.3;
+
 export class Game {
 
     #canvas;
@@ -21,8 +25,17 @@ export class Game {
     #explosionLightTime = 0;
     #explosionLightDuration = 0.5;
     #explosionLightPoint = null;
+    #layerFlashTime = 0;
+    #layerFlashElapsed = 0;
+    #layerFlashDuration = 0.35;
+    #layerFlashColor = "#FFFFFF";
     #player;
     #goal;
+    #layerSounds = {
+        R: new Audio("./sfx/R.wav"),
+        G: new Audio("./sfx/G.wav"),
+        B: new Audio("./sfx/B.wav")
+    };
 
     #spawnPoint;
 
@@ -36,11 +49,16 @@ export class Game {
 
     #stageIndex = 0;
     #activeLayer = "R";
+    #layerColors = {
+        R: "#FF0000",
+        G: "#00FF00",
+        B: "#0000FF"
+    };
     #fps = 0;
     #frameTime = 0;
     #elapsedTime = 0;
     #transitionTime = 0;
-    #transitionDuration = 0.6;
+    #transitionDuration = 2;
     #transitioning = false;
     #transitionLoaded = false;
 
@@ -104,6 +122,7 @@ export class Game {
         this.#spawnElapsed = 0;
         this.#explosionLightTime = 0;
         this.#explosionLightPoint = null;
+        this.#layerFlashTime = 0;
         this.#goal = null;
 
         this.#createBlocks(stage.map);
@@ -329,6 +348,19 @@ export class Game {
                 this.#activeLayer = "R";
                 break;
         }
+
+            this.#layerFlashColor = this.#layerColors[this.#activeLayer];
+            this.#layerFlashTime = this.#layerFlashDuration;
+            this.#layerFlashElapsed = 0;
+
+        const layerSound = this.#layerSounds[this.#activeLayer];
+        layerSound.volume = {
+            R: rSoundVolume,
+            G: gSoundVolume,
+            B: bSoundVolume
+        }[this.#activeLayer];
+        layerSound.currentTime = 0;
+        layerSound.play().catch(() => {});
     }
 
     update(deltaTime) {
@@ -336,6 +368,16 @@ export class Game {
         this.#explosionLightTime = Math.max(
             0,
             this.#explosionLightTime - deltaTime
+        );
+
+        this.#layerFlashTime = Math.max(
+            0,
+            this.#layerFlashTime - deltaTime
+        );
+
+        this.#layerFlashElapsed = Math.min(
+            this.#layerFlashDuration,
+            this.#layerFlashElapsed + deltaTime
         );
 
         if (this.#transitioning) {
@@ -721,6 +763,12 @@ export class Game {
         ctx.save();
         ctx.globalAlpha = easedSpawnProgress;
 
+        this.#player.setGlowColor(
+            this.#layerFlashTime > 0
+                ? this.#layerFlashColor
+                : "#FFFFFF"
+        );
+
         this.#player.draw(
             playerDrawX,
             playerDrawY,
@@ -864,6 +912,58 @@ export class Game {
         );
         ctx.restore();
 
+        if (this.#layerFlashTime > 0) {
+
+            const progress =
+                this.#layerFlashElapsed / this.#layerFlashDuration;
+
+            const fadeProgress =
+                progress < 0.25
+                    ? progress / 0.25
+                    : (1 - progress) / 0.75;
+
+            const intensity =
+                fadeProgress * fadeProgress * (3 - 2 * fadeProgress);
+            const centerAlpha =
+                Math.round(intensity * 80).toString(16).padStart(2, "0");
+            const edgeAlpha =
+                Math.round(intensity * 35).toString(16).padStart(2, "0");
+
+            const color = this.#layerFlashColor;
+            const gradient = ctx.createRadialGradient(
+                playerCenterX,
+                playerCenterY,
+                0,
+                playerCenterX,
+                playerCenterY,
+                radius
+            );
+
+            gradient.addColorStop(
+                0,
+                `${color}${centerAlpha}`
+            );
+            gradient.addColorStop(
+                0.5,
+                `${color}${edgeAlpha}`
+            );
+            gradient.addColorStop(
+                1,
+                `${color}00`
+            );
+
+            ctx.save();
+            ctx.globalCompositeOperation = "screen";
+            ctx.fillStyle = gradient;
+            ctx.fillRect(
+                0,
+                0,
+                this.#canvas.width,
+                this.#canvas.height
+            );
+            ctx.restore();
+        }
+
         this.#drawExplosionFlash();
     }
 
@@ -945,18 +1045,27 @@ export class Game {
             return;
         }
 
-        const progress =
-            this.#transitionTime / this.#transitionDuration;
+        const progress = Math.max(
+            0,
+            Math.min(
+                1,
+                this.#transitionTime / this.#transitionDuration
+            )
+        );
 
-        const opacity =
+        const blackoutProgress =
             progress < 0.5
                 ? progress * 2
                 : (1 - progress) * 2;
 
+        const opacity =
+            blackoutProgress * blackoutProgress *
+            (3 - 2 * blackoutProgress);
+
         const ctx = this.#ctx;
 
         ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, opacity));
+        ctx.globalAlpha = opacity;
         ctx.fillStyle = "#000000";
         ctx.fillRect(
             0,
@@ -964,6 +1073,75 @@ export class Game {
             this.#canvas.width,
             this.#canvas.height
         );
+        ctx.restore();
+
+        if (progress >= 0.5) {
+            return;
+        }
+
+        const clearProgress = progress * 2;
+        const easedProgress =
+            clearProgress * clearProgress * (3 - 2 * clearProgress);
+        const centerX =
+            this.#offsetX +
+            (this.#player.x + this.#player.w / 2) * this.#scale;
+        const centerY =
+            this.#offsetY +
+            (this.#player.y + this.#player.h / 2) * this.#scale;
+        const maxRadius = Math.max(
+            this.#canvas.width,
+            this.#canvas.height
+        ) * 0.75;
+        const ringRadius =
+            100 * this.#scale + maxRadius * (1 - easedProgress);
+        const color = "#FFFFFF";
+
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
+
+        const glow = ctx.createRadialGradient(
+            centerX,
+            centerY,
+            0,
+            centerX,
+            centerY,
+            ringRadius
+        );
+
+        glow.addColorStop(0, `${color}AA`);
+        glow.addColorStop(0.25, `${color}44`);
+        glow.addColorStop(1, `${color}00`);
+
+        ctx.fillStyle = glow;
+        ctx.fillRect(
+            0,
+            0,
+            this.#canvas.width,
+            this.#canvas.height
+        );
+
+        ctx.lineWidth = Math.max(2, 5 * this.#scale * (1 - clearProgress));
+        ctx.strokeStyle = `${color}${Math.round((1 - clearProgress) * 220)
+            .toString(16)
+            .padStart(2, "0")}`;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.translate(centerX, centerY);
+        ctx.rotate(clearProgress * Math.PI * 1.5);
+        ctx.strokeStyle = `${color}${Math.round((1 - clearProgress) * 100)
+            .toString(16)
+            .padStart(2, "0")}`;
+
+        for (let ray = 0; ray < 8; ray++) {
+            ctx.rotate(Math.PI / 4);
+            ctx.beginPath();
+            ctx.moveTo(ringRadius * 0.35, 0);
+            ctx.lineTo(ringRadius * 1.2, 0);
+            ctx.stroke();
+        }
+
         ctx.restore();
     }
 

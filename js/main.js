@@ -19,6 +19,40 @@ let selectedIndex = 0;
 
 let gameStarted = false;
 let game = null;
+const backgroundMusic = new Audio("./bgm/Layers.wav");
+backgroundMusic.loop = true;
+
+
+function playBackgroundMusic() {
+
+    backgroundMusic.volume = 0;
+
+    const playPromise = backgroundMusic.play();
+
+    if (!playPromise) return;
+
+    playPromise.then(() => {
+
+        const fadeStart = performance.now();
+        const fadeDuration = 4000;
+
+        function fadeIn(currentTime) {
+
+            const progress = Math.min(
+                (currentTime - fadeStart) / fadeDuration,
+                1
+            );
+
+            backgroundMusic.volume = progress * 0.05;
+
+            if (progress < 1) {
+                requestAnimationFrame(fadeIn);
+            }
+        }
+
+        requestAnimationFrame(fadeIn);
+    }).catch(() => {});
+}
 
 
 /* =====================================
@@ -107,6 +141,7 @@ function startGame() {
     if (gameStarted) return;
 
     gameStarted = true;
+    playBackgroundMusic();
 
 
     titleScreen.classList.add("hidden");

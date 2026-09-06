@@ -120,4 +120,8 @@ export class BoxDrawer {
 
         ctx.restore();
     }
+
+    setGlowColor(color) {
+        this.opts.glowColor = color;
+    }
 }
