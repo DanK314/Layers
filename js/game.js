@@ -5,7 +5,7 @@ import { Particle } from "./particle.js";
 import { Goal } from "./goal.js";
 import { Spike } from "./spike.js";
 
-const rSoundVolume = 0.5;
+const rSoundVolume = 1;
 const gSoundVolume = rSoundVolume * 0.5;
 const bSoundVolume = rSoundVolume * 0.3;
 
@@ -115,6 +115,9 @@ export class Game {
 
         const stage = stageArray[index];
 
+        this.#mapWidth = stage.width ?? 16;
+        this.#mapHeight = stage.height ?? 16;
+
         this.#blocks = [];
         this.#spikes = [];
         this.#particles = [];
@@ -125,6 +128,7 @@ export class Game {
         this.#layerFlashTime = 0;
         this.#goal = null;
 
+        this.#resize();
         this.#createBlocks(stage.map);
 
         const playerStart = stage.objects.player[0];

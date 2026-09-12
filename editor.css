@@ -389,6 +389,39 @@ button {
 }
 
 
+#map-size-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    margin-right: auto;
+}
+
+
+#map-size-controls label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    color: #D5D5D5;
+    font-size: 11px;
+    letter-spacing: 1px;
+}
+
+
+#map-size-controls input {
+    width: 58px;
+    height: 28px;
+
+    padding: 0 8px;
+
+    border: 1px solid #333333;
+
+    background: #111111;
+    color: #FFFFFF;
+}
+
+
 /*
  * 하단 버튼
  */

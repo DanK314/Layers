@@ -43,7 +43,7 @@ function playBackgroundMusic() {
                 1
             );
 
-            backgroundMusic.volume = progress * 0.05;
+            backgroundMusic.volume = progress * 0.2;
 
             if (progress < 1) {
                 requestAnimationFrame(fadeIn);

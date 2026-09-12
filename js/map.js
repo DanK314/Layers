@@ -401,56 +401,61 @@ export class MapParser {
          * Color / Object 레이어 파싱
          */
 
-        const colorRows = chunk.color
+        const colorRows = (chunk.color ?? "")
             .trim()
             .split("\n")
-            .map(row => row.trim());
+            .map(row => row.trim())
+            .filter(row => row.length > 0);
 
-        const objectRows = chunk.object
+        const objectRows = (chunk.object ?? "")
             .trim()
             .split("\n")
-            .map(row => row.trim());
+            .map(row => row.trim())
+            .filter(row => row.length > 0);
 
-
-        const height = colorRows.length;
-        const width = colorRows[0].length;
-
-
-        /*
-         * 맵 크기 검사
-         */
-
-        if (height !== 16) {
+        if (colorRows.length === 0 || objectRows.length === 0) {
 
             throw new Error(
-                `Color map height must be 16. Got ${height}.`
-            );
-        }
-
-        if (objectRows.length !== 16) {
-
-            throw new Error(
-                `Object map height must be 16. Got ${objectRows.length}.`
+                "Map data must contain at least one row."
             );
         }
 
 
-        for (let y = 0; y < height; y++) {
+        const explicitWidth = Number.isInteger(chunk.width)
+            ? chunk.width
+            : null;
 
-            if (colorRows[y].length !== 16) {
+        const explicitHeight = Number.isInteger(chunk.height)
+            ? chunk.height
+            : null;
 
-                throw new Error(
-                    `Color map width must be 16 at row ${y}. Got ${colorRows[y].length}.`
-                );
-            }
+        const height = explicitHeight ?? colorRows.length;
+        const width = explicitWidth ?? Math.max(
+            ...colorRows.map(row => row.length),
+            ...objectRows.map(row => row.length),
+            0
+        );
 
-            if (objectRows[y].length !== 16) {
 
-                throw new Error(
-                    `Object map width must be 16 at row ${y}. Got ${objectRows[y].length}.`
-                );
-            }
+        if (objectRows.length !== height) {
+
+            throw new Error(
+                `Object map height must match color map height. Got ${objectRows.length} and ${height}.`
+            );
         }
+
+
+        const normalizedColorRows = Array.from(
+            { length: height },
+            (_, y) =>
+                (colorRows[y] ?? "").padEnd(width, ".").slice(0, width)
+        );
+
+        const normalizedObjectRows = Array.from(
+            { length: height },
+            (_, y) =>
+                (objectRows[y] ?? "").padEnd(width, ".").slice(0, width)
+        );
 
 
         /*
@@ -459,6 +464,8 @@ export class MapParser {
 
         const result = {
 
+            width,
+            height,
             map: [],
 
             objects: {
@@ -479,8 +486,8 @@ export class MapParser {
 
             for (let x = 0; x < width; x++) {
 
-                const color = colorRows[y][x];
-                const object = objectRows[y][x];
+                const color = normalizedColorRows[y][x];
+                const object = normalizedObjectRows[y][x];
 
 
                 /*

@@ -8,14 +8,17 @@ const clearButton = document.querySelector("#clear-button");
 const saveButton = document.querySelector("#save-button");
 const loadButton = document.querySelector("#load-button");
 const copyButton = document.querySelector("#copy-button");
+const resizeButton = document.querySelector("#resize-button");
+const mapWidthInput = document.querySelector("#map-width-input");
+const mapHeightInput = document.querySelector("#map-height-input");
 
 
 /*
  * 맵 설정
  */
 
-const MAP_WIDTH = 16;
-const MAP_HEIGHT = 16;
+let MAP_WIDTH = 16;
+let MAP_HEIGHT = 16;
 
 
 /*
@@ -90,23 +93,82 @@ const OBJECTS = {
  * 맵 생성
  */
 
-function createColorMap() {
+function getSafeMapSize(value, fallback) {
+
+    const parsed = Number.parseInt(
+        value,
+        10
+    );
+
+    return Number.isInteger(parsed) && parsed > 0
+        ? parsed
+        : fallback;
+}
+
+
+function createColorMap(width = MAP_WIDTH, height = MAP_HEIGHT) {
 
     return Array.from(
-        { length: MAP_HEIGHT },
+        { length: height },
         () =>
-            Array(MAP_WIDTH).fill(".")
+            Array(width).fill(".")
     );
 }
 
 
-function createObjectMap() {
+function createObjectMap(width = MAP_WIDTH, height = MAP_HEIGHT) {
 
     return Array.from(
-        { length: MAP_HEIGHT },
+        { length: height },
         () =>
-            Array(MAP_WIDTH).fill(".")
+            Array(width).fill(".")
     );
+}
+
+
+function resizeMaps(width, height) {
+
+    const nextWidth = getSafeMapSize(
+        width,
+        MAP_WIDTH
+    );
+
+    const nextHeight = getSafeMapSize(
+        height,
+        MAP_HEIGHT
+    );
+
+    const nextColorMap = createColorMap(
+        nextWidth,
+        nextHeight
+    );
+
+    const nextObjectMap = createObjectMap(
+        nextWidth,
+        nextHeight
+    );
+
+
+    for (let y = 0; y < Math.min(MAP_HEIGHT, nextHeight); y++) {
+
+        for (let x = 0; x < Math.min(MAP_WIDTH, nextWidth); x++) {
+
+            nextColorMap[y][x] = colorMap[y][x] ?? ".";
+            nextObjectMap[y][x] = objectMap[y][x] ?? ".";
+        }
+    }
+
+
+    MAP_WIDTH = nextWidth;
+    MAP_HEIGHT = nextHeight;
+
+    colorMap = nextColorMap;
+    objectMap = nextObjectMap;
+
+    mapWidthInput.value = String(MAP_WIDTH);
+    mapHeightInput.value = String(MAP_HEIGHT);
+
+    draw();
 }
 
 
@@ -657,6 +719,9 @@ function createMapCode() {
 
 
     return `{
+    width: ${MAP_WIDTH},
+    height: ${MAP_HEIGHT},
+
     color: \`
 ${colorText}
     \`,
@@ -793,6 +858,8 @@ saveButton.addEventListener(
     () => {
 
         const data = {
+            width: MAP_WIDTH,
+            height: MAP_HEIGHT,
             color: colorMap,
             object: objectMap
         };
@@ -847,16 +914,27 @@ loadButton.addEventListener(
             const data =
                 JSON.parse(saved);
 
+            const colorRows = Array.isArray(data.color)
+                ? data.color.map(
+                    row => Array.isArray(row)
+                        ? [...row]
+                        : [...String(row)]
+                )
+                : [];
 
-            /*
-             * 기본적인 데이터 검사
-             */
+            const objectRows = Array.isArray(data.object)
+                ? data.object.map(
+                    row => Array.isArray(row)
+                        ? [...row]
+                        : [...String(row)]
+                )
+                : [];
+
 
             if (
-                !Array.isArray(data.color) ||
-                !Array.isArray(data.object) ||
-                data.color.length !== MAP_HEIGHT ||
-                data.object.length !== MAP_HEIGHT
+                colorRows.length === 0 ||
+                objectRows.length === 0 ||
+                colorRows.length !== objectRows.length
             ) {
 
                 throw new Error(
@@ -865,16 +943,37 @@ loadButton.addEventListener(
             }
 
 
-            colorMap =
-                data.color.map(
-                    row => [...row]
-                );
+            const mapWidth = Math.max(
+                ...colorRows.map(row => row.length),
+                ...objectRows.map(row => row.length),
+                1
+            );
 
-            objectMap =
-                data.object.map(
-                    row => [...row]
-                );
+            const mapHeight = colorRows.length;
 
+            MAP_WIDTH = mapWidth;
+            MAP_HEIGHT = mapHeight;
+
+            colorMap = Array.from(
+                { length: mapHeight },
+                (_, y) =>
+                    Array.from(
+                        { length: mapWidth },
+                        (_, x) => colorRows[y]?.[x] ?? "."
+                    )
+            );
+
+            objectMap = Array.from(
+                { length: mapHeight },
+                (_, y) =>
+                    Array.from(
+                        { length: mapWidth },
+                        (_, x) => objectRows[y]?.[x] ?? "."
+                    )
+            );
+
+            mapWidthInput.value = String(MAP_WIDTH);
+            mapHeightInput.value = String(MAP_HEIGHT);
 
             draw();
 
@@ -893,6 +992,20 @@ loadButton.addEventListener(
 /*
  * 초기화
  */
+
+mapWidthInput.value = String(MAP_WIDTH);
+mapHeightInput.value = String(MAP_HEIGHT);
+
+resizeButton.addEventListener(
+    "click",
+    () => {
+
+        resizeMaps(
+            mapWidthInput.value,
+            mapHeightInput.value
+        );
+    }
+);
 
 resizeCanvas();
 selectObject("#");
