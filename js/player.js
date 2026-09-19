@@ -1,8 +1,12 @@
+
 import { GameObject } from "./object.js";
 
 const jumpSoundVolume = 0.1;
 
 export class Player extends GameObject {
+
+    #xStretch = 0.18;
+    #yStretch = 0.18;
 
     #keys = {
         left: false,
@@ -17,9 +21,20 @@ export class Player extends GameObject {
     // 바닥 판정
     #isGrounded = false;
 
+    // 스폰
     #spawnX;
     #spawnY;
+
+    // 사운드
     #jumpSound = new Audio("./sfx/Jump.wav");
+
+    // 렌더링
+    #ctx;
+
+    // 젤리 시각 효과
+    #stretch = 0;
+    #squash = 0;
+    #lastVx = 0;
 
     constructor(ctx, x, y) {
 
@@ -38,6 +53,8 @@ export class Player extends GameObject {
                 glowColor: "#FFFFFF"
             }
         );
+
+        this.#ctx = ctx;
 
         this.#spawnX = x;
         this.#spawnY = y;
@@ -69,7 +86,6 @@ export class Player extends GameObject {
 
                 break;
 
-
             case "KeyD":
 
                 this.#keys.right = true;
@@ -77,7 +93,6 @@ export class Player extends GameObject {
                 event.preventDefault();
 
                 break;
-
 
             case "KeyW":
 
@@ -99,7 +114,6 @@ export class Player extends GameObject {
 
                 break;
 
-
             case "KeyD":
 
                 this.#keys.right = false;
@@ -114,14 +128,7 @@ export class Player extends GameObject {
             return;
         }
 
-        /*
-         * 점프는 위쪽 초기 속도만 설정한다.
-         *
-         * 중력 자체는 BoxCollider가 담당한다.
-         */
-
         this.vy = -820;
-
         this.#isGrounded = false;
 
         this.#jumpSound.volume = jumpSoundVolume;
@@ -138,6 +145,11 @@ export class Player extends GameObject {
         this.vy = 0;
 
         this.#isGrounded = false;
+
+        // 시각 효과 초기화
+        this.#stretch = 0;
+        this.#squash = 0;
+        this.#lastVx = 0;
     }
 
     setGrounded(value) {
@@ -157,10 +169,7 @@ export class Player extends GameObject {
                 ? this.#acceleration
                 : this.#airAcceleration;
 
-        /*
-         * 좌우 가속
-         */
-
+        // 좌우 가속
         if (this.#keys.left) {
 
             this.vx -=
@@ -175,10 +184,7 @@ export class Player extends GameObject {
                 deltaTime;
         }
 
-        /*
-         * 최대 수평 속도 제한
-         */
-
+        // 최대 수평 속도 제한
         this.vx = Math.max(
             -this.#maxSpeed,
             Math.min(
@@ -187,19 +193,170 @@ export class Player extends GameObject {
             )
         );
 
+        super.update(deltaTime);
+    }
+
+    draw(screenX, screenY, scale = 1) {
+
+        const ctx = this.#ctx;
+
         /*
-         * 여기서는 중력 / 마찰을 처리하지 않는다.
-         *
-         * super.update()
-         *      ↓
-         * GameObject
-         *      ↓
-         * BoxCollider
-         *
-         * BoxCollider가
-         * 중력 + 마찰 + 위치 이동을 처리한다.
+         * 현재 이동 속도
          */
 
-        super.update(deltaTime);
+        const horizontalSpeed =
+            Math.abs(this.vx);
+
+        /*
+         * 수평 속도가 빠를수록
+         * 살짝만 늘어나도록 둔다.
+         */
+
+        const speedRatio =
+            Math.min(
+                horizontalSpeed / 700,
+                1
+            );
+
+        const targetStretch =
+            speedRatio * 0.3;
+
+        /*
+         * 갑작스러운 가속이나 감속에
+         * 살짝 눌리는 효과
+         */
+
+        const accelerationChange =
+            this.vx - this.#lastVx;
+
+        const targetSquash =
+            Math.min(
+                Math.abs(accelerationChange) / 420,
+                1
+            ) * 0.08;
+
+        /*
+         * 부드러운 젤리 보간
+         */
+
+        this.#stretch +=
+            (
+                targetStretch -
+                this.#stretch
+            ) * 0.08;
+
+        this.#squash +=
+            (
+                targetSquash -
+                this.#squash
+            ) * 0.12;
+
+        this.#lastVx = this.vx;
+
+        /*
+         * 이동 방향
+         *
+         * 속도가 너무 느리면
+         * 현재 방향을 유지한다.
+         */
+
+        /*
+         * 기본 크기
+         */
+
+        const width =
+            this.w * scale;
+
+        const height =
+            this.h * scale;
+
+        /*
+         * 이동 방향으로 늘어난다.
+         *
+         * X축은 늘어나고
+         * Y축은 살짝 압축된다.
+         */
+
+        const stretchX =
+            1 + this.#stretch * this.#xStretch;
+
+        const stretchY =
+            1 - this.#stretch * this.#yStretch;
+
+        /*
+         * 순간적인 눌림
+         */
+
+        const squashX =
+            1 - this.#squash * 0.75;
+
+        const squashY =
+            1 + this.#squash * 0.65;
+
+        const finalScaleX =
+            stretchX * squashX;
+
+        const finalScaleY =
+            stretchY * squashY;
+
+        /*
+         * 플레이어 중심
+         */
+
+        const centerX =
+            screenX +
+            width / 2 +
+            this.vx * 0.005;
+
+        const centerY =
+            screenY +
+            height / 2 +
+            this.vy * 0.005;
+
+        ctx.save();
+
+        /*
+         * 중심을 기준으로 변형
+         */
+
+        ctx.translate(
+            centerX,
+            centerY
+        );
+
+        /*
+         * 젤리 형태로 스케일
+         */
+
+        ctx.scale(
+            finalScaleX,
+            finalScaleY
+        );
+
+        /*
+         * 플레이어 색상
+         */
+
+        ctx.fillStyle = "#FFFFFF";
+
+        /*
+         * 네온 글로우
+         */
+
+        ctx.shadowColor = "#FFFFFF";
+        ctx.shadowBlur = 22;
+
+        /*
+         * 일반 사각형
+         */
+
+        ctx.fillRect(
+            -width / 2,
+            -height / 2,
+            width,
+            height
+        );
+
+        ctx.restore();
     }
 }
