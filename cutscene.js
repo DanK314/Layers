@@ -727,32 +727,79 @@ blackHole.add(
     diskGroup
 );
 
+diskGroup.position.set(
+    0,
+    0,
+    0
+);
+
 const diskParticles = [];
 
-const diskParticleGeometry =
-    new THREE.SphereGeometry(
-        0.035,
-        6,
-        6
+const diskRim =
+    new THREE.Mesh(
+        new THREE.TorusGeometry(
+            4.4,
+            0.48,
+            20,
+            160
+        ),
+        new THREE.MeshBasicMaterial({
+            color: 0x8f8f8f,
+            transparent: true,
+            opacity: 0.24,
+            depthWrite: false,
+            blending:
+                THREE.AdditiveBlending,
+            toneMapped: false
+        })
     );
 
-for (let i = 0; i < 1200; i++) {
+diskRim.rotation.x =
+    0;
+
+diskRim.scale.y =
+    0.62;
+
+diskGroup.add(
+    diskRim
+);
+
+const diskParticleGeometry =
+    new THREE.PlaneGeometry(
+        0.48,
+        0.025
+    );
+
+for (let i = 0; i < 1800; i++) {
 
     const angle =
         Math.random() *
         Math.PI * 2;
 
     const radius =
-        2.4 +
-        Math.random() * 5;
+        2.35 +
+        Math.random() * 5.05;
+
+    const thickness =
+        0.018 +
+        Math.random() * 0.035;
 
     const material =
         new THREE.MeshBasicMaterial({
-            color: 0xffffff,
+            color: (() => {
+                const gray =
+                    0.28 + Math.random() * 0.72;
+
+                return new THREE.Color(
+                    gray,
+                    gray,
+                    gray
+                );
+            })(),
             transparent: true,
             opacity:
-                0.25 +
-                Math.random() * 0.55,
+                0.35 +
+                Math.random() * 0.5,
             depthWrite: false,
             blending:
                 THREE.AdditiveBlending
@@ -766,19 +813,29 @@ for (let i = 0; i < 1200; i++) {
 
     particle.position.set(
         Math.cos(angle) * radius,
-        (Math.random() - 0.5) *
-        radius * 0.05,
         Math.sin(angle) *
         radius *
-        0.42
+        0.42,
+        (Math.random() - 0.5) * thickness
+    );
+
+    particle.scale.set(
+        1.5 + Math.random() * 4.5,
+        0.8 + Math.random() * 0.8,
+        1
     );
 
     particle.userData = {
         angle,
         radius,
         speed:
-            0.7 +
-            5 / radius
+            1.5 +
+            9 / radius,
+        wave:
+            Math.random() * Math.PI * 2,
+        thickness,
+        brightness:
+            0.65 + Math.random() * 0.35
     };
 
     diskGroup.add(
@@ -791,7 +848,10 @@ for (let i = 0; i < 1200; i++) {
 }
 
 diskGroup.rotation.x =
-    0.3;
+    0;
+
+diskGroup.rotation.z =
+    0.28;
 
 diskGroup.scale.setScalar(
     0.001
@@ -1334,28 +1394,71 @@ function updateDisk(delta) {
         of diskParticles
     ) {
 
-        particle.userData.angle +=
-            particle.userData.speed *
+        const data =
+            particle.userData;
+
+        data.angle +=
+            data.speed *
             delta;
 
         const angle =
-            particle.userData.angle;
+            data.angle;
 
         const radius =
-            particle.userData.radius;
+            data.radius;
+
+        const flowWave =
+            Math.sin(
+                elapsed * 5 +
+                data.wave +
+                radius * 1.8
+            );
 
         particle.position.x =
             Math.cos(angle) *
             radius;
 
         particle.position.z =
+            flowWave * data.thickness * 2;
+
+        particle.position.y =
             Math.sin(angle) *
             radius *
-            0.42;
+            (0.68 + flowWave * 0.035);
+
+        particle.rotation.z =
+            angle + Math.PI / 2 + 0.28;
+
+        const beaming =
+            0.72 +
+            Math.max(
+                0,
+                Math.sin(angle + 0.8)
+            ) * 0.28;
+
+        const innerHeat =
+            1.15 -
+            Math.min(radius / 8, 1) * 0.35;
+
+        particle.material.opacity =
+            Math.min(
+                0.95,
+                data.brightness *
+                beaming *
+                innerHeat *
+                (0.82 +
+                    Math.sin(
+                        elapsed * 3 +
+                        data.wave
+                    ) * 0.18)
+            );
     }
 
     diskGroup.rotation.z +=
-        delta * 0.05;
+        delta * 0.18;
+
+    diskRim.rotation.z +=
+        delta * 0.18;
 }
 
 
