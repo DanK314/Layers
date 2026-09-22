@@ -149,6 +149,14 @@ const starPositions =
         starCount * 3
     );
 
+const starStretch =
+    new Float32Array(starCount);
+
+const starDirection =
+    new Float32Array(starCount * 2);
+
+const starMotion = [];
+
 for (let i = 0; i < starCount; i++) {
 
     const i3 = i * 3;
@@ -161,20 +169,54 @@ for (let i = 0; i < starCount; i++) {
 
     starPositions[i3 + 2] =
         (Math.random() - 0.5) * 220;
+
+    starStretch[i] =
+        1;
+
+    starDirection[i * 2] =
+        1;
+
+    starDirection[i * 2 + 1] =
+        0;
+
+    starMotion.push({
+        speed:
+            4 + Math.random() * 8,
+        absorbed: false,
+        exploding: false,
+        velocity:
+            new THREE.Vector3()
+    });
 }
 
-starGeometry.setAttribute(
-    "position",
+const starPositionAttribute =
     new THREE.BufferAttribute(
         starPositions,
         3
-    )
+    );
+
+const starLinePositions =
+    new Float32Array(starCount * 6);
+
+starGeometry.setAttribute(
+    "position",
+    starPositionAttribute
+);
+
+starGeometry.setAttribute(
+    "aStretch",
+    new THREE.BufferAttribute(starStretch, 1)
+);
+
+starGeometry.setAttribute(
+    "aDirection",
+    new THREE.BufferAttribute(starDirection, 2)
 );
 
 const starMaterial =
     new THREE.PointsMaterial({
         color: 0xffffff,
-        size: 1.4,
+        size: 2.4,
         sizeAttenuation: false,
         transparent: true,
         opacity: 1,
@@ -189,6 +231,38 @@ scene.add(
         starMaterial
     )
 );
+
+const starLineGeometry =
+    new THREE.BufferGeometry();
+
+const starLinePositionAttribute =
+    new THREE.BufferAttribute(
+        starLinePositions,
+        3
+    );
+
+starLineGeometry.setAttribute(
+    "position",
+    starLinePositionAttribute
+);
+
+const starLineMaterial =
+    new THREE.LineBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        fog: false
+    });
+
+const starLines =
+    new THREE.LineSegments(
+        starLineGeometry,
+        starLineMaterial
+    );
+
+scene.add(starLines);
 
 
 // ==================================================
@@ -289,28 +363,6 @@ for (let i = 0; i < 10000; i++) {
         Math.PI * 2
     );
     planetTextureContext.fill();
-}
-
-planetTextureContext.strokeStyle =
-    "rgba(190, 190, 190, 0.48)";
-
-planetTextureContext.lineWidth =
-    2;
-
-for (let x = 0; x <= 1024; x += 28) {
-
-    planetTextureContext.beginPath();
-    planetTextureContext.moveTo(x, 0);
-    planetTextureContext.lineTo(x, 512);
-    planetTextureContext.stroke();
-}
-
-for (let y = 0; y <= 512; y += 24) {
-
-    planetTextureContext.beginPath();
-    planetTextureContext.moveTo(0, y);
-    planetTextureContext.lineTo(1024, y);
-    planetTextureContext.stroke();
 }
 
 const planetTexture =
@@ -597,10 +649,23 @@ const lensMaterial =
                 float radius =
                     length(uv);
 
+                float angle =
+                    atan(uv.y, uv.x);
+
+                float beaming =
+                    0.72 +
+                    0.28 * (0.5 +
+                    0.5 * sin(angle + 0.9));
+
+                float warpedRadius =
+                    radius +
+                    sin(angle + time * 0.08) *
+                    0.006 * smoothstep(0.08, 0.5, radius);
+
                 float ring =
                     exp(
                         -pow(
-                            (radius - 0.29) * 38.0,
+                            (warpedRadius - 0.29) * 52.0,
                             2.0
                         )
                     );
@@ -608,7 +673,15 @@ const lensMaterial =
                 float outer =
                     exp(
                         -pow(
-                            (radius - 0.39) * 15.0,
+                            (warpedRadius - 0.36) * 14.0,
+                            2.0
+                        )
+                    );
+
+                float innerGlow =
+                    exp(
+                        -pow(
+                            (warpedRadius - 0.245) * 11.0,
                             2.0
                         )
                     );
@@ -640,11 +713,14 @@ const lensMaterial =
 
                 float alpha =
                     (
-                        ring +
-                        outer * 0.28
+                        ring * 1.65 +
+                        outer * 0.62 +
+                        innerGlow * 0.42
                     )
                     * strength
-                    * pulse;
+                    * pulse
+                    * beaming
+                    * 1.35;
 
                 alpha *=
                     smoothstep(
@@ -656,7 +732,11 @@ const lensMaterial =
                 gl_FragColor =
                     vec4(
                         color,
-                        alpha
+                        alpha * smoothstep(
+                            0.5,
+                            0.06,
+                            radius
+                        )
                     );
             }
         `
@@ -683,7 +763,7 @@ blackHole.add(
 const photonRingGeometry =
     new THREE.TorusGeometry(
         2.45,
-        0.09,
+        0.13,
         16,
         160
     );
@@ -692,7 +772,7 @@ const photonRingMaterial =
     new THREE.MeshBasicMaterial({
         color: 0xffffff,
         transparent: true,
-        opacity: 0.95,
+        opacity: 1,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
         toneMapped: false
@@ -1072,6 +1152,11 @@ let elapsed = 0;
 
 let shake = 0;
 
+function smoothFactor(rate, delta) {
+
+    return 1 - Math.exp(-rate * delta);
+}
+
 let absorptionProgress =
     0;
 
@@ -1133,6 +1218,40 @@ function setState(next) {
             1;
 
         shake = 1.8;
+
+        for (let i = 0; i < starCount; i++) {
+
+            const data =
+                starMotion[i];
+
+            if (data.absorbed) {
+                continue;
+            }
+
+            const i3 =
+                i * 3;
+
+            const starPosition =
+                new THREE.Vector3(
+                    starPositions[i3],
+                    starPositions[i3 + 1],
+                    starPositions[i3 + 2]
+                );
+
+            const escapeDirection =
+                starPosition
+                    .sub(blackHole.position)
+                    .normalize();
+
+            data.velocity
+                .copy(escapeDirection)
+                .multiplyScalar(
+                    22 + Math.random() * 16
+                );
+
+            data.exploding =
+                true;
+        }
 
         const escapeDirection =
             new THREE.Vector3()
@@ -1298,7 +1417,7 @@ function updateGravity(delta) {
 
         cube.userData.velocity.lerp(
             direction.multiplyScalar(targetSpeed),
-            Math.min(1, delta * 10)
+            smoothFactor(10, delta)
         );
 
         cube.position.add(
@@ -1380,6 +1499,226 @@ function updateGravity(delta) {
             STATE.COLLAPSE
         );
     }
+}
+
+
+function updateStars(delta) {
+
+    const hole =
+        blackHole.position;
+
+    for (let i = 0; i < starCount; i++) {
+
+        const data =
+            starMotion[i];
+
+        if (data.absorbed) {
+            continue;
+        }
+
+        const i3 =
+            i * 3;
+
+        const starPosition =
+            new THREE.Vector3(
+                starPositions[i3],
+                starPositions[i3 + 1],
+                starPositions[i3 + 2]
+            );
+
+        if (data.exploding) {
+
+            starStretch[i] +=
+                (1 - starStretch[i]) *
+                smoothFactor(2.2, delta);
+
+            starPosition.add(
+                data.velocity
+                    .clone()
+                    .multiplyScalar(delta)
+            );
+
+            data.velocity.multiplyScalar(
+                Math.exp(-0.35 * delta)
+            );
+
+            starPositions[i3] =
+                starPosition.x;
+
+            starPositions[i3 + 1] =
+                starPosition.y;
+
+            starPositions[i3 + 2] =
+                starPosition.z;
+
+            const explosionDirection =
+                data.velocity.clone().normalize();
+
+            const explosionLineIndex =
+                i * 6;
+
+            const explosionLineLength =
+                0.5 + 0.12 * starStretch[i];
+
+            starLinePositions[explosionLineIndex] =
+                starPosition.x;
+
+            starLinePositions[explosionLineIndex + 1] =
+                starPosition.y;
+
+            starLinePositions[explosionLineIndex + 2] =
+                starPosition.z;
+
+            starLinePositions[explosionLineIndex + 3] =
+                starPosition.x -
+                explosionDirection.x *
+                explosionLineLength;
+
+            starLinePositions[explosionLineIndex + 4] =
+                starPosition.y -
+                explosionDirection.y *
+                explosionLineLength;
+
+            starLinePositions[explosionLineIndex + 5] =
+                starPosition.z -
+                explosionDirection.z *
+                explosionLineLength;
+
+            continue;
+        }
+
+        const offset =
+            new THREE.Vector3()
+                .subVectors(hole, starPosition);
+
+        const distance =
+            offset.length();
+
+        const direction =
+            offset.normalize();
+
+        const screenDirection =
+            direction.clone()
+                .transformDirection(
+                    camera.matrixWorldInverse
+                );
+
+        const stretch =
+            1 +
+            Math.min(
+                52,
+                Math.max(0, 20 - distance) * 3.2
+            );
+
+        starStretch[i] +=
+            (stretch - starStretch[i]) *
+            smoothFactor(5, delta);
+
+        starDirection[i * 2] =
+            screenDirection.x;
+
+        starDirection[i * 2 + 1] =
+            screenDirection.y;
+
+        const speed =
+            Math.min(
+                34,
+                data.speed + distance * 0.22
+            );
+
+        starPosition.add(
+            direction.multiplyScalar(
+                speed * delta
+            )
+        );
+
+        const lineIndex =
+            i * 6;
+
+        const lineLength =
+            0.5 + 0.12 * starStretch[i];
+
+        starLinePositions[lineIndex] =
+            starPosition.x;
+
+        starLinePositions[lineIndex + 1] =
+            starPosition.y;
+
+        starLinePositions[lineIndex + 2] =
+            starPosition.z;
+
+        starLinePositions[lineIndex + 3] =
+            starPosition.x -
+            direction.x * lineLength;
+
+        starLinePositions[lineIndex + 4] =
+            starPosition.y -
+            direction.y * lineLength;
+
+        starLinePositions[lineIndex + 5] =
+            starPosition.z -
+            direction.z * lineLength;
+
+        starPositions[i3] =
+            starPosition.x;
+
+        starPositions[i3 + 1] =
+            starPosition.y;
+
+        starPositions[i3 + 2] =
+            starPosition.z;
+
+        if (
+            distance < 3.2
+        ) {
+            data.absorbed =
+                true;
+
+            starPositions[i3] =
+                hole.x;
+
+            starPositions[i3 + 1] =
+                hole.y;
+
+            starPositions[i3 + 2] =
+                hole.z;
+
+            starStretch[i] =
+                1;
+
+            starLinePositions[lineIndex] =
+                hole.x;
+
+            starLinePositions[lineIndex + 1] =
+                hole.y;
+
+            starLinePositions[lineIndex + 2] =
+                hole.z;
+
+            starLinePositions[lineIndex + 3] =
+                hole.x;
+
+            starLinePositions[lineIndex + 4] =
+                hole.y;
+
+            starLinePositions[lineIndex + 5] =
+                hole.z;
+        }
+    }
+
+    starPositionAttribute.needsUpdate =
+        true;
+
+    starLinePositionAttribute.needsUpdate =
+        true;
+
+    starGeometry.attributes
+        .aStretch.needsUpdate =
+        true;
+
+    starGeometry.attributes
+        .aDirection.needsUpdate =
+        true;
 }
 
 
@@ -1576,7 +1915,7 @@ function updatePlayerGravity(delta) {
         playerVelocity.lerp(
             offset.normalize()
                 .multiplyScalar(targetSpeed),
-            Math.min(1, delta * 10)
+            smoothFactor(10, delta)
         );
     }
 
@@ -1629,7 +1968,7 @@ function updateCamera(delta) {
                 12 - eased * 5 + cameraLift,
                 52 - eased * 22 + cameraDepth
             ),
-            delta * 1.2
+            smoothFactor(1.2, delta)
         );
 
         target.set(
@@ -1680,7 +2019,7 @@ function updateCamera(delta) {
 
         camera.position.lerp(
             zoomPosition,
-            delta * 0.9
+            smoothFactor(0.9, delta)
         );
 
         target = new THREE.Vector3().lerpVectors(
@@ -1738,7 +2077,7 @@ function updateCamera(delta) {
 
         camera.position.lerp(
             zoomPosition,
-            delta * 0.9
+            smoothFactor(0.9, delta)
         );
 
         target = new THREE.Vector3().lerpVectors(
@@ -1918,6 +2257,7 @@ function update(delta) {
                 1;
 
             updateGravity(delta);
+            updateStars(delta);
             updatePlayerGravity(delta);
 
             break;
@@ -1963,6 +2303,7 @@ function update(delta) {
                 progress * 0.75;
 
             updatePlayerGravity(delta);
+            updateStars(delta);
 
             if (
                 stateTime > 0.8
@@ -1980,6 +2321,7 @@ function update(delta) {
         case STATE.SHOCKWAVE:
 
             updateShockwave();
+            updateStars(delta);
             updatePlayer(delta);
 
             if (
