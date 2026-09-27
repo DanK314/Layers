@@ -61,10 +61,16 @@ export class Game {
     #transitionDuration = 2;
     #transitioning = false;
     #transitionLoaded = false;
+    #customStage;
+    #animationFrameId = null;
+    #running = false;
+    #resizeHandler = () => this.#resize();
+    #keyDownHandler = (event) => this.#keyDown(event);
 
-    constructor(canvas) {
+    constructor(canvas, customStage = null) {
 
         this.#canvas = canvas;
+        this.#customStage = customStage;
         this.#ctx = canvas.getContext("2d");
         this.#lightCanvas = document.createElement("canvas");
         this.#lightCtx = this.#lightCanvas.getContext("2d");
@@ -75,14 +81,12 @@ export class Game {
 
         window.addEventListener(
             "resize",
-            () => this.#resize()
+            this.#resizeHandler
         );
 
         window.addEventListener(
             "keydown",
-            (event) => {
-                this.#keyDown(event);
-            }
+            this.#keyDownHandler
         );
     }
 
@@ -113,7 +117,7 @@ export class Game {
 
     #loadStage(index) {
 
-        const stage = stageArray[index];
+        const stage = this.#customStage ?? stageArray[index];
 
         this.#mapWidth = stage.width ?? 16;
         this.#mapHeight = stage.height ?? 16;
@@ -139,6 +143,7 @@ export class Game {
             );
         }
 
+        this.#player?.dispose();
         this.#player = new Player(
             this.#ctx,
             playerStart.x * this.#tileSize + (this.#tileSize - 32) / 2,
@@ -569,6 +574,10 @@ export class Game {
 
     #nextStage() {
 
+        if (this.#customStage) {
+            return;
+        }
+
         if (this.#stageIndex >= stageArray.length - 1) {
             return;
         }
@@ -633,8 +642,15 @@ export class Game {
                 this.#offsetY +
                 spike.y * this.#scale;
 
+            ctx.globalAlpha =
+                spike.isSolid(this.#activeLayer)
+                    ? 1
+                    : 0.3;
+
             spike.draw(screenX, screenY, this.#scale);
         }
+
+        ctx.globalAlpha = 1;
 
         /*
          * 스폰 / 골인 파티클
@@ -1191,11 +1207,21 @@ export class Game {
 
     run() {
 
+        if (this.#running) {
+            return;
+        }
+
+        this.#running = true;
+
         let lastTime = performance.now();
         let physicsAccumulator = 0;
         const physicsStep = 1 / 60;
 
         const loop = (currentTime) => {
+
+            if (!this.#running) {
+                return;
+            }
 
             const frameDeltaTime =
                 (currentTime - lastTime) / 1000;
@@ -1224,9 +1250,23 @@ export class Game {
 
             this.draw();
 
-            requestAnimationFrame(loop);
+            this.#animationFrameId = requestAnimationFrame(loop);
         };
 
-        requestAnimationFrame(loop);
+        this.#animationFrameId = requestAnimationFrame(loop);
+    }
+
+    stop() {
+
+        this.#running = false;
+
+        if (this.#animationFrameId !== null) {
+            cancelAnimationFrame(this.#animationFrameId);
+            this.#animationFrameId = null;
+        }
+
+        window.removeEventListener("resize", this.#resizeHandler);
+        window.removeEventListener("keydown", this.#keyDownHandler);
+        this.#player?.dispose();
     }
 }

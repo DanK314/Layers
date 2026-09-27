@@ -20,10 +20,11 @@
         <!-- 에디터 헤더 -->
 
         <header id="editor-header">
-
-            <h1>
-                L A Y E R : S
-            </h1>
+            <a href="index.html">
+                <h1>
+                    L A Y E R : S
+                </h1>
+            </a>
 
             <span>
                 MAP EDITOR
@@ -183,9 +184,18 @@
                 COPY CODE
             </button>
 
+            <button id="test-button">
+                TEST MAP
+            </button>
+
         </footer>
 
     </main>
+
+    <section id="game-preview" aria-label="Map preview" aria-hidden="true">
+        <canvas id="preview-canvas"></canvas>
+        <button id="return-editor-button" type="button">BACK TO EDITOR <span>ESC</span></button>
+    </section>
 
 
     <script type="module" src="./js/editor.js"></script>

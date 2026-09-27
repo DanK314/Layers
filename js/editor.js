@@ -1,3 +1,6 @@
+import { Game } from "./game.js";
+import { MapParser } from "./map.js";
+
 const canvas = document.querySelector("#map-canvas");
 const ctx = canvas.getContext("2d");
 
@@ -11,6 +14,10 @@ const copyButton = document.querySelector("#copy-button");
 const resizeButton = document.querySelector("#resize-button");
 const mapWidthInput = document.querySelector("#map-width-input");
 const mapHeightInput = document.querySelector("#map-height-input");
+const testButton = document.querySelector("#test-button");
+const gamePreview = document.querySelector("#game-preview");
+const previewCanvas = document.querySelector("#preview-canvas");
+const returnEditorButton = document.querySelector("#return-editor-button");
 
 
 /*
@@ -45,6 +52,7 @@ let objectMap = createObjectMap();
  */
 
 let isMouseDown = false;
+let previewGame = null;
 
 
 /*
@@ -543,6 +551,10 @@ window.addEventListener(
     "keydown",
     event => {
 
+        if (previewGame) {
+            return;
+        }
+
         const keyMap = {
             "1": ".",
             "2": "#",
@@ -1011,3 +1023,47 @@ resizeCanvas();
 selectObject("#");
 selectColor("W");
 draw();
+
+function startPreview() {
+
+    if (!validateMap()) {
+        return;
+    }
+
+    const stage = MapParser.parse({
+        width: MAP_WIDTH,
+        height: MAP_HEIGHT,
+        color: colorMap.map(row => row.join("")).join("\n"),
+        object: objectMap.map(row => row.join("")).join("\n")
+    });
+
+    previewCanvas.width = window.innerWidth;
+    previewCanvas.height = window.innerHeight;
+    gamePreview.classList.add("active");
+    gamePreview.setAttribute("aria-hidden", "false");
+    previewGame = new Game(previewCanvas, stage);
+    previewGame.run();
+}
+
+function stopPreview() {
+
+    if (!previewGame) {
+        return;
+    }
+
+    previewGame.stop();
+    previewGame = null;
+    gamePreview.classList.remove("active");
+    gamePreview.setAttribute("aria-hidden", "true");
+}
+
+testButton.addEventListener("click", startPreview);
+returnEditorButton.addEventListener("click", stopPreview);
+
+window.addEventListener("keydown", event => {
+
+    if (event.code === "Escape" && previewGame) {
+        event.preventDefault();
+        stopPreview();
+    }
+});

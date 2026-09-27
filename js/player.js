@@ -35,6 +35,8 @@ export class Player extends GameObject {
     #stretch = 0;
     #squash = 0;
     #lastVx = 0;
+    #keyDownHandler = (event) => this.#keyDown(event);
+    #keyUpHandler = (event) => this.#keyUp(event);
 
     constructor(ctx, x, y) {
 
@@ -61,17 +63,19 @@ export class Player extends GameObject {
 
         window.addEventListener(
             "keydown",
-            (event) => {
-                this.#keyDown(event);
-            }
+            this.#keyDownHandler
         );
 
         window.addEventListener(
             "keyup",
-            (event) => {
-                this.#keyUp(event);
-            }
+            this.#keyUpHandler
         );
+    }
+
+    dispose() {
+
+        window.removeEventListener("keydown", this.#keyDownHandler);
+        window.removeEventListener("keyup", this.#keyUpHandler);
     }
 
     #keyDown(event) {
