@@ -5,7 +5,7 @@ import { Particle } from "./particle.js";
 import { Goal } from "./goal.js";
 import { Spike } from "./spike.js";
 
-const rSoundVolume = 1;
+const rSoundVolume = 0.1;
 const gSoundVolume = rSoundVolume * 0.5;
 const bSoundVolume = rSoundVolume * 0.3;
 

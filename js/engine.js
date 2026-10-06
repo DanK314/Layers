@@ -7,6 +7,7 @@ export class BoxCollider {
 
         this.vx = 0;
         this.vy = 0;
+        this.previousY = y;
 
         this.setting = {
             gravity: true,
@@ -28,6 +29,21 @@ export class BoxCollider {
 
         if (!this.setting.collides) return;
         if (!this.isCollidingWith(other)) return;
+
+        const horizontalOverlap =
+            Math.min(this.x + this.w, other.x + other.w) -
+            Math.max(this.x, other.x);
+
+        const crossedTopWhileFalling =
+            this.vy >= 0 &&
+            horizontalOverlap > 0 &&
+            this.previousY + this.h <= other.y;
+
+        if (crossedTopWhileFalling) {
+            this.y = other.y - this.h;
+            this.vy = 0;
+            return;
+        }
 
         const dx =
             (this.x + this.w / 2) -
@@ -68,6 +84,8 @@ export class BoxCollider {
     }
 
     update(deltaTime = 1 / 60) {
+
+        this.previousY = this.y;
 
         if (this.setting.gravity) {
             const gravity = 2400;
