@@ -10,6 +10,7 @@ const colorButtons = document.querySelectorAll(".color-button");
 const clearButton = document.querySelector("#clear-button");
 const saveButton = document.querySelector("#save-button");
 const loadButton = document.querySelector("#load-button");
+const loadCodeButton = document.querySelector("#load-code-button");
 const copyButton = document.querySelector("#copy-button");
 const resizeButton = document.querySelector("#resize-button");
 const mapWidthInput = document.querySelector("#map-width-input");
@@ -18,6 +19,11 @@ const testButton = document.querySelector("#test-button");
 const gamePreview = document.querySelector("#game-preview");
 const previewCanvas = document.querySelector("#preview-canvas");
 const returnEditorButton = document.querySelector("#return-editor-button");
+const loadCodeDialog = document.querySelector("#load-code-dialog");
+const loadCodeInput = document.querySelector("#load-code-input");
+const loadCodeError = document.querySelector("#load-code-error");
+const cancelLoadCodeButton = document.querySelector("#cancel-load-code-button");
+const submitLoadCodeButton = document.querySelector("#submit-load-code-button");
 
 
 /*
@@ -85,6 +91,10 @@ const OBJECTS = {
 
     "^": {
         name: "SPIKE"
+    },
+
+    "O": {
+        name: "MINI BLACKHOLE"
     },
 
     "@": {
@@ -350,6 +360,31 @@ function drawCell(x, y) {
             ctx.fill();
         }
 
+        /*
+         * MINI BLACKHOLE
+         */
+
+        else if (object === "O") {
+
+            const cx = px + cellSize * 0.5;
+            const cy = py + cellSize * 0.5;
+
+            for (let particle = 0; particle < 8; particle++) {
+                const angle = particle / 8 * Math.PI * 2;
+                const orbit = cellSize * (0.12 + particle * 0.018);
+
+                ctx.beginPath();
+                ctx.arc(
+                    cx + Math.cos(angle) * orbit,
+                    cy + Math.sin(angle) * orbit * 0.75,
+                    Math.max(1, cellSize * 0.035),
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+        }
+
 
         /*
          * PLAYER
@@ -543,8 +578,9 @@ colorButtons.forEach(button => {
  * 1 = AIR
  * 2 = BLOCK
  * 3 = SPIKE
- * 4 = PLAYER
- * 5 = GOAL
+ * 4 = MINI BLACKHOLE
+ * 5 = PLAYER
+ * 6 = GOAL
  */
 
 window.addEventListener(
@@ -559,8 +595,9 @@ window.addEventListener(
             "1": ".",
             "2": "#",
             "3": "^",
-            "4": "@",
-            "5": "$"
+            "4": "O",
+            "5": "@",
+            "6": "$"
         };
 
         const object =
@@ -742,6 +779,68 @@ ${colorText}
 ${objectText}
     \`
 }`;
+}
+
+
+function parseMapCode(code) {
+
+    const widthMatch = code.match(/\bwidth\s*:\s*(\d+)\s*,/);
+    const heightMatch = code.match(/\bheight\s*:\s*(\d+)\s*,/);
+    const colorMatch = code.match(/\bcolor\s*:\s*`([\s\S]*?)`/);
+    const objectMatch = code.match(/\bobject\s*:\s*`([\s\S]*?)`/);
+
+    if (!widthMatch || !heightMatch || !colorMatch || !objectMatch) {
+        throw new Error("Map code format is not recognized.");
+    }
+
+    const width = Number(widthMatch[1]);
+    const height = Number(heightMatch[1]);
+
+    if (
+        !Number.isInteger(width) ||
+        !Number.isInteger(height) ||
+        width < 1 ||
+        height < 1 ||
+        width > 128 ||
+        height > 128
+    ) {
+        throw new Error("Map width and height must be between 1 and 128.");
+    }
+
+    const colorRows = colorMatch[1]
+        .trim()
+        .split(/\r?\n/)
+        .map(row => row.trim())
+        .filter(row => row.length > 0);
+
+    const objectRows = objectMatch[1]
+        .trim()
+        .split(/\r?\n/)
+        .map(row => row.trim())
+        .filter(row => row.length > 0);
+
+    if (
+        colorRows.length !== height ||
+        objectRows.length !== height ||
+        colorRows.some(row => row.length !== width) ||
+        objectRows.some(row => row.length !== width)
+    ) {
+        throw new Error("Map code rows do not match the declared size.");
+    }
+
+    if (
+        colorRows.some(row => /[^.WRGBYMC]/.test(row)) ||
+        objectRows.some(row => /[^.#^O@$]/.test(row))
+    ) {
+        throw new Error("Map code contains an unknown color or object.");
+    }
+
+    return {
+        width,
+        height,
+        color: colorRows.map(row => [...row]),
+        object: objectRows.map(row => [...row])
+    };
 }
 
 
@@ -996,6 +1095,56 @@ loadButton.addEventListener(
             alert(
                 "맵 데이터를 불러올 수 없습니다."
             );
+        }
+    }
+);
+
+
+/*
+ * LOAD WITH CODE
+ */
+
+loadCodeButton.addEventListener(
+    "click",
+    () => {
+
+        loadCodeError.hidden = true;
+        loadCodeError.textContent = "";
+        loadCodeDialog.showModal();
+        loadCodeInput.focus();
+    }
+);
+
+
+cancelLoadCodeButton.addEventListener(
+    "click",
+    () => loadCodeDialog.close()
+);
+
+
+submitLoadCodeButton.addEventListener(
+    "click",
+    () => {
+
+        try {
+
+            const data = parseMapCode(loadCodeInput.value);
+
+            MAP_WIDTH = data.width;
+            MAP_HEIGHT = data.height;
+            colorMap = data.color;
+            objectMap = data.object;
+
+            mapWidthInput.value = String(MAP_WIDTH);
+            mapHeightInput.value = String(MAP_HEIGHT);
+
+            draw();
+            loadCodeDialog.close();
+
+        } catch (error) {
+
+            loadCodeError.textContent = `Could not load map code: ${error.message}`;
+            loadCodeError.hidden = false;
         }
     }
 );

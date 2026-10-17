@@ -461,6 +461,79 @@ button {
     color: #000000;
 }
 
+#load-code-button {
+    white-space: nowrap;
+}
+
+
+#load-code-dialog {
+    width: min(560px, calc(100% - 32px));
+    max-height: calc(100% - 32px);
+    padding: 0;
+    border: 1px solid #444444;
+    background: #080808;
+    color: #FFFFFF;
+}
+
+#load-code-dialog::backdrop {
+    background: rgb(0 0 0 / 80%);
+}
+
+.load-code-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 24px;
+}
+
+.load-code-content h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 3px;
+}
+
+.load-code-content label {
+    color: #AAAAAA;
+    font-size: 12px;
+}
+
+#load-code-input {
+    width: 100%;
+    resize: vertical;
+    padding: 12px;
+    border: 1px solid #333333;
+    background: #111111;
+    color: #FFFFFF;
+    font: 12px/1.5 monospace;
+}
+
+#load-code-error {
+    margin: 0;
+    color: #FF7777;
+    font-size: 12px;
+}
+
+.load-code-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.load-code-actions button {
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid #333333;
+    font-size: 10px;
+    letter-spacing: 1px;
+}
+
+.load-code-actions button:hover {
+    border-color: #FFFFFF;
+    background: #FFFFFF;
+    color: #000000;
+}
+
 
 /*
  * 스크롤바

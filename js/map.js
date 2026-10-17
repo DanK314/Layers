@@ -596,6 +596,13 @@ export class MapParser {
 
                         break;
 
+                    // Mini Blackhole
+                    case "O":
+
+                        tile.type = "blackhole";
+
+                        break;
+
 
                     default:
 

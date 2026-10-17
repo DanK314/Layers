@@ -67,14 +67,20 @@
                         <span class="object-name">SPIKE</span>
                     </button>
 
-                    <button class="object-button" data-object="@" data-key="4">
+                    <button class="object-button" data-object="O" data-key="4">
                         <span class="object-number">4</span>
+                        <span class="object-symbol">O</span>
+                        <span class="object-name">MINI BLACKHOLE</span>
+                    </button>
+
+                    <button class="object-button" data-object="@" data-key="5">
+                        <span class="object-number">5</span>
                         <span class="object-symbol">@</span>
                         <span class="object-name">PLAYER</span>
                     </button>
 
-                    <button class="object-button" data-object="$" data-key="5">
-                        <span class="object-number">5</span>
+                    <button class="object-button" data-object="$" data-key="6">
+                        <span class="object-number">6</span>
                         <span class="object-symbol">$</span>
                         <span class="object-name">GOAL</span>
                     </button>
@@ -180,6 +186,10 @@
                 LOAD
             </button>
 
+            <button id="load-code-button">
+                LOAD WITH CODE
+            </button>
+
             <button id="copy-button">
                 COPY CODE
             </button>
@@ -191,6 +201,19 @@
         </footer>
 
     </main>
+
+    <dialog id="load-code-dialog" aria-labelledby="load-code-title">
+        <div class="load-code-content">
+            <h2 id="load-code-title">LOAD WITH CODE</h2>
+            <label for="load-code-input">Paste map code:</label>
+            <textarea id="load-code-input" rows="12" spellcheck="false"></textarea>
+            <p id="load-code-error" role="alert" hidden></p>
+            <div class="load-code-actions">
+                <button id="cancel-load-code-button" type="button">CANCEL</button>
+                <button id="submit-load-code-button" type="button">LOAD MAP</button>
+            </div>
+        </div>
+    </dialog>
 
     <section id="game-preview" aria-label="Map preview" aria-hidden="true">
         <canvas id="preview-canvas"></canvas>

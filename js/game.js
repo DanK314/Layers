@@ -4,6 +4,9 @@ import { Player } from "./player.js";
 import { Particle } from "./particle.js";
 import { Goal } from "./goal.js";
 import { Spike } from "./spike.js";
+import { MiniBlackhole } from "./mini-blackhole.js";
+
+const PLAYER_FLASHLIGHT_SIZE = 600;
 
 const rSoundVolume = 0.1;
 const gSoundVolume = rSoundVolume * 0.5;
@@ -18,6 +21,7 @@ export class Game {
 
     #blocks = [];
     #spikes = [];
+    #miniBlackholes = [];
     #particles = [];
     #particleSpawnTime = 0;
     #spawnElapsed = 0;
@@ -124,6 +128,7 @@ export class Game {
 
         this.#blocks = [];
         this.#spikes = [];
+        this.#miniBlackholes = [];
         this.#particles = [];
         this.#particleSpawnTime = 0;
         this.#spawnElapsed = 0;
@@ -223,12 +228,13 @@ export class Game {
                 const tile = map[y][x];
 
                 /*
-                 * 블록과 스파이크만 게임 오브젝트로 생성한다.
+                 * 게임 오브젝트로 동작하는 타일만 생성한다.
                  */
 
                 if (
                     tile.type !== "block" &&
-                    tile.type !== "spike"
+                    tile.type !== "spike" &&
+                    tile.type !== "blackhole"
                 ) {
                     continue;
                 }
@@ -306,6 +312,21 @@ export class Game {
                             color,
                             rgb,
                             options
+                        )
+                    );
+
+                    continue;
+                }
+
+                if (tile.type === "blackhole") {
+
+                    this.#miniBlackholes.push(
+                        new MiniBlackhole(
+                            this.#ctx,
+                            x * this.#tileSize,
+                            y * this.#tileSize,
+                            color,
+                            rgb
                         )
                     );
 
@@ -422,6 +443,12 @@ export class Game {
 
         this.#player.setGrounded(false);
 
+        for (const miniBlackhole of this.#miniBlackholes) {
+            if (miniBlackhole.isSolid(this.#activeLayer)) {
+                miniBlackhole.pull(this.#player, deltaTime);
+            }
+        }
+
         this.#player.update(deltaTime);
 
         /*
@@ -526,8 +553,9 @@ export class Game {
                 return;
             }
         }
-        /*
- * 파티클 업데이트
+
+         /*
+  * 파티클 업데이트
  */
 
         for (const particle of this.#particles) {
@@ -648,6 +676,25 @@ export class Game {
                     : 0.3;
 
             spike.draw(screenX, screenY, this.#scale);
+        }
+
+        for (const miniBlackhole of this.#miniBlackholes) {
+            const screenX =
+                this.#offsetX + miniBlackhole.x * this.#scale;
+            const screenY =
+                this.#offsetY + miniBlackhole.y * this.#scale;
+
+            ctx.globalAlpha =
+                miniBlackhole.isSolid(this.#activeLayer)
+                    ? 1
+                    : 0.3;
+
+            miniBlackhole.draw(
+                screenX,
+                screenY,
+                this.#scale,
+                this.#elapsedTime
+            );
         }
 
         ctx.globalAlpha = 1;
@@ -895,7 +942,7 @@ export class Game {
             this.#offsetY +
             (this.#player.y + this.#player.h / 2) * this.#scale;
 
-        const radius = 400 * this.#scale;
+        const radius = PLAYER_FLASHLIGHT_SIZE * this.#scale;
 
         drawLight(
             playerCenterX,
@@ -903,6 +950,19 @@ export class Game {
             radius,
             1
         );
+
+        for (const miniBlackhole of this.#miniBlackholes) {
+            if (!miniBlackhole.isSolid(this.#activeLayer)) {
+                continue;
+            }
+
+            drawLight(
+                this.#offsetX + (miniBlackhole.x + miniBlackhole.w / 2) * this.#scale,
+                this.#offsetY + (miniBlackhole.y + miniBlackhole.h / 2) * this.#scale,
+                140 * this.#scale,
+                0.2
+            );
+        }
 
         if (
             this.#explosionLightPoint &&
