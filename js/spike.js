@@ -1,3 +1,5 @@
+import { drawColorTexture } from "./texture.js";
+
 export class Spike {
 
     x;
@@ -178,5 +180,15 @@ export class Spike {
 
 
         ctx.restore();
+
+        drawColorTexture(
+            ctx,
+            this.color,
+            screenX,
+            screenY,
+            s,
+            s,
+            "diamond"
+        );
     }
 }

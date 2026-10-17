@@ -1,4 +1,8 @@
 import { Game } from "./game.js";
+import {
+    areColorTexturesEnabled,
+    setColorTexturesEnabled
+} from "./texture.js";
 
 
 const titleScreen =
@@ -128,7 +132,21 @@ function selectMenu() {
             openMapMaker();
             break;
 
+        case "color-textures":
+            setColorTexturesEnabled(!areColorTexturesEnabled());
+            updateTextureMenuItem();
+            break;
+
     }
+}
+
+function updateTextureMenuItem() {
+    const textureMenuItem = document.querySelector(
+        '[data-menu="color-textures"]'
+    );
+
+    textureMenuItem.textContent =
+        `TEXTURES: ${areColorTexturesEnabled() ? "ON" : "OFF"}`;
 }
 
 
@@ -243,3 +261,4 @@ window.addEventListener("pageshow", (event) => {
 ===================================== */
 
 updateMenu();
+updateTextureMenuItem();

@@ -294,7 +294,10 @@ export class Game {
 
                 const options = {
                     glow: false,
-                    glowColor: color
+                    glowColor: color,
+                    grass:
+                        tile.type === "block" &&
+                        (y === 0 || map[y - 1][x]?.type !== "block")
                 };
 
 
@@ -927,10 +930,10 @@ export class Game {
             lightCtx.globalCompositeOperation = "destination-out";
             lightCtx.fillStyle = gradient;
             lightCtx.fillRect(
-                0,
-                0,
-                this.#canvas.width,
-                this.#canvas.height
+                centerX - radius,
+                centerY - radius,
+                radius * 2,
+                radius * 2
             );
         };
 

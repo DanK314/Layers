@@ -1,5 +1,6 @@
 
 import { GameObject } from "./object.js";
+import { drawColorTexture } from "./texture.js";
 
 const jumpSoundVolume = 0.1;
 
@@ -359,6 +360,16 @@ export class Player extends GameObject {
             -height / 2,
             width,
             height
+        );
+
+        drawColorTexture(
+            ctx,
+            "#FFFFFF",
+            -width / 2,
+            -height / 2,
+            width,
+            height,
+            "rect"
         );
 
         ctx.restore();

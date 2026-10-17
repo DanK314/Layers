@@ -1,3 +1,5 @@
+import { drawColorTexture } from "./texture.js";
+
 export class MiniBlackhole {
 
     x;
@@ -95,6 +97,27 @@ export class MiniBlackhole {
             ctx.arc(x, y, size, 0, Math.PI * 2);
             ctx.fill();
         }
+
+        const coreRadius = radius * 0.65;
+        const coreX = centerX - coreRadius;
+        const coreY = centerY - coreRadius;
+        const coreSize = coreRadius * 2;
+
+        ctx.globalAlpha = drawAlpha;
+        ctx.fillStyle = this.#color;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, coreRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        drawColorTexture(
+            ctx,
+            this.#color,
+            coreX,
+            coreY,
+            coreSize,
+            coreSize,
+            "circle"
+        );
 
         ctx.restore();
     }

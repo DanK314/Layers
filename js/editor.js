@@ -1,5 +1,10 @@
 import { Game } from "./game.js";
 import { MapParser } from "./map.js";
+import {
+    areColorTexturesEnabled,
+    drawColorTexture,
+    setColorTexturesEnabled
+} from "./texture.js";
 
 const canvas = document.querySelector("#map-canvas");
 const ctx = canvas.getContext("2d");
@@ -16,6 +21,7 @@ const resizeButton = document.querySelector("#resize-button");
 const mapWidthInput = document.querySelector("#map-width-input");
 const mapHeightInput = document.querySelector("#map-height-input");
 const testButton = document.querySelector("#test-button");
+const textureToggleButton = document.querySelector("#texture-toggle-button");
 const gamePreview = document.querySelector("#game-preview");
 const previewCanvas = document.querySelector("#preview-canvas");
 const returnEditorButton = document.querySelector("#return-editor-button");
@@ -59,6 +65,20 @@ let objectMap = createObjectMap();
 
 let isMouseDown = false;
 let previewGame = null;
+
+function updateTextureToggle() {
+    const enabled = areColorTexturesEnabled();
+
+    textureToggleButton.textContent =
+        `TEXTURES: ${enabled ? "ON" : "OFF"}`;
+    textureToggleButton.setAttribute("aria-pressed", String(enabled));
+}
+
+textureToggleButton.addEventListener("click", () => {
+    setColorTexturesEnabled(!areColorTexturesEnabled());
+    updateTextureToggle();
+    draw();
+});
 
 
 /*
@@ -324,11 +344,25 @@ function drawCell(x, y) {
 
         if (object === "#") {
 
+            const blockX = px + cellSize * 0.08;
+            const blockY = py + cellSize * 0.08;
+            const blockSize = cellSize * 0.84;
+
             ctx.fillRect(
-                px + cellSize * 0.08,
-                py + cellSize * 0.08,
-                cellSize * 0.84,
-                cellSize * 0.84
+                blockX,
+                blockY,
+                blockSize,
+                blockSize
+            );
+
+            drawColorTexture(
+                ctx,
+                COLORS[color],
+                blockX,
+                blockY,
+                blockSize,
+                blockSize,
+                "rect"
             );
         }
 
@@ -358,6 +392,16 @@ function drawCell(x, y) {
             ctx.lineTo(px + half, cy);
             ctx.closePath();
             ctx.fill();
+
+            drawColorTexture(
+                ctx,
+                COLORS[color],
+                px,
+                py,
+                cellSize,
+                cellSize,
+                "diamond"
+            );
         }
 
         /*
@@ -383,6 +427,25 @@ function drawCell(x, y) {
                 );
                 ctx.fill();
             }
+
+            const coreRadius = cellSize * 0.12;
+            const coreX = cx - coreRadius;
+            const coreY = cy - coreRadius;
+            const coreSize = coreRadius * 2;
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, coreRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            drawColorTexture(
+                ctx,
+                COLORS[color],
+                coreX,
+                coreY,
+                coreSize,
+                coreSize,
+                "circle"
+            );
         }
 
 
@@ -1171,6 +1234,7 @@ resizeButton.addEventListener(
 resizeCanvas();
 selectObject("#");
 selectColor("W");
+updateTextureToggle();
 draw();
 
 function startPreview() {
