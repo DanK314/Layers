@@ -5,6 +5,7 @@ import {
     drawColorTexture,
     setColorTexturesEnabled
 } from "./texture.js";
+import { uploadMap } from "./map-api.js";
 
 const canvas = document.querySelector("#map-canvas");
 const ctx = canvas.getContext("2d");
@@ -30,6 +31,43 @@ const loadCodeInput = document.querySelector("#load-code-input");
 const loadCodeError = document.querySelector("#load-code-error");
 const cancelLoadCodeButton = document.querySelector("#cancel-load-code-button");
 const submitLoadCodeButton = document.querySelector("#submit-load-code-button");
+const clearMapDialog = document.querySelector("#clear-map-dialog");
+const cancelClearMapButton = document.querySelector("#cancel-clear-map-button");
+const confirmClearMapButton = document.querySelector("#confirm-clear-map-button");
+const uploadButton = document.createElement("button");
+uploadButton.id = "upload-map-button";
+uploadButton.textContent = "UPLOAD MAP";
+uploadButton.className = "object-button";
+
+const uploadStatus = document.createElement("p");
+uploadStatus.id = "upload-map-status";
+uploadStatus.setAttribute("role", "status");
+uploadStatus.style.overflowWrap = "anywhere";
+
+const shareLink = document.createElement("input");
+shareLink.id = "share-map-link";
+shareLink.type = "text";
+shareLink.readOnly = true;
+shareLink.hidden = true;
+shareLink.setAttribute("aria-label", "맵 공유 링크");
+
+const copyShareButton = document.createElement("button");
+copyShareButton.id = "copy-share-link-button";
+copyShareButton.textContent = "COPY SHARE LINK";
+copyShareButton.className = "object-button";
+copyShareButton.hidden = true;
+
+const uploadPanel = document.createElement("section");
+uploadPanel.id = "upload-map-panel";
+
+uploadPanel.append(
+    uploadButton,
+    uploadStatus,
+    shareLink,
+    copyShareButton
+);
+
+copyButton.insertAdjacentElement("afterend", uploadPanel);
 
 
 /*
@@ -793,17 +831,22 @@ canvas.addEventListener(
 clearButton.addEventListener(
     "click",
     () => {
-
-        colorMap =
-            createColorMap();
-
-        objectMap =
-            createObjectMap();
-
-        draw();
-
+        clearMapDialog.showModal();
     }
 );
+
+cancelClearMapButton.addEventListener("click", () => {
+    clearMapDialog.close();
+});
+
+confirmClearMapButton.addEventListener("click", () => {
+    colorMap = createColorMap();
+    objectMap = createObjectMap();
+
+    draw();
+    clearMapDialog.close();
+});
+
 
 
 /*
@@ -1211,6 +1254,81 @@ submitLoadCodeButton.addEventListener(
         }
     }
 );
+
+const GAME_URL = new URL("./index.html", window.location.href);
+
+uploadButton.addEventListener("click", async () => {
+    if (uploadButton.disabled) return;
+    if (!validateMap()) return;
+
+    const titleInput = prompt("맵 이름을 입력하세요.", "Untitled");
+
+    if (titleInput === null) return;
+
+    const title = titleInput.trim() || "Untitled";
+
+    // 기존 에디터 데이터를 그대로 복사
+    const mapData = {
+        width: MAP_WIDTH,
+        height: MAP_HEIGHT,
+        color: colorMap.map(row => [...row]),
+        object: objectMap.map(row => [...row])
+    };
+
+    uploadButton.disabled = true;
+    uploadStatus.textContent = "맵 업로드 중...";
+    copyShareButton.hidden = true;
+    shareLink.hidden = true;
+
+    try {
+        const result = await uploadMap(mapData, title);
+
+        const url = new URL(GAME_URL.href);
+        url.searchParams.set("map", String(result.mapId));
+
+        shareLink.value = url.href;
+        shareLink.hidden = false;
+        copyShareButton.hidden = false;
+
+        uploadStatus.textContent =
+            `업로드 완료! 맵 번호: ${result.mapId}`;
+
+    } catch (error) {
+        console.error("Map upload failed:", error);
+
+        if (error.status === 429) {
+            const seconds = Number.isFinite(error.retryAfter)
+                ? error.retryAfter
+                : 600;
+
+            uploadStatus.textContent =
+                `업로드 제한: ${seconds}초 후 다시 시도하세요.`;
+        } else {
+            uploadStatus.textContent =
+                `업로드 실패: ${error.message}`;
+        }
+    } finally {
+        uploadButton.disabled = false;
+    }
+});
+
+copyShareButton.addEventListener("click", async () => {
+    try {
+        await navigator.clipboard.writeText(shareLink.value);
+        copyShareButton.textContent = "COPIED";
+
+        setTimeout(() => {
+            copyShareButton.textContent = "COPY SHARE LINK";
+        }, 1000);
+    } catch (error) {
+        console.error(error);
+        shareLink.focus();
+        shareLink.select();
+        uploadStatus.textContent =
+            "링크를 선택했어요. Ctrl+C로 복사하세요.";
+    }
+});
+
 
 
 /*

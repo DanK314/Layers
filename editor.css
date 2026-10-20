@@ -515,6 +515,89 @@ html[data-color-textures="off"] .color-swatch {
     color: #000000;
 }
 
+#editor-footer #resize-button {
+    border-color: #FFFFFF;
+    background: #FFFFFF;
+    color: #000000;
+
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+#editor-footer #resize-button:hover {
+    border-color: #D5D5D5;
+    background: #D5D5D5;
+}
+
+#editor-footer #resize-button:focus-visible {
+    outline: 1px solid #FFFFFF;
+    outline-offset: 3px;
+}
+
+#upload-map-panel {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+}
+
+#upload-map-panel button {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    white-space: nowrap;
+}
+
+#upload-map-panel [hidden] {
+    display: none;
+}
+
+#upload-map-status {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 6px);
+    width: max-content;
+    max-width: min(320px, 60vw);
+    margin: 0;
+    color: #AAAAAA;
+    font-size: 10px;
+    line-height: 1.4;
+    text-align: right;
+}
+
+#share-map-link {
+    width: 150px;
+    height: 36px;
+    padding: 0 8px;
+    border: 1px solid #333333;
+    background: #111111;
+    color: #FFFFFF;
+    font: 10px monospace;
+}
+
+#editor-footer #test-button {
+    flex-shrink: 0;
+    border-color: #FFFFFF;
+    background: #FFFFFF;
+    color: #000000;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+#editor-footer #test-button:hover {
+    border-color: #D5D5D5;
+    background: #D5D5D5;
+}
+
+#editor-footer #test-button:focus-visible,
+#upload-map-panel button:focus-visible {
+    outline: 1px solid #FFFFFF;
+    outline-offset: 3px;
+}
+
 #load-code-button {
     white-space: nowrap;
 }
@@ -529,7 +612,19 @@ html[data-color-textures="off"] .color-swatch {
     color: #FFFFFF;
 }
 
+#clear-map-dialog {
+    width: min(420px, calc(100% - 32px));
+    padding: 0;
+    border: 1px solid #444444;
+    background: #080808;
+    color: #FFFFFF;
+}
+
 #load-code-dialog::backdrop {
+    background: rgb(0 0 0 / 80%);
+}
+
+#clear-map-dialog::backdrop {
     background: rgb(0 0 0 / 80%);
 }
 
@@ -545,6 +640,13 @@ html[data-color-textures="off"] .color-swatch {
     font-size: 14px;
     font-weight: 400;
     letter-spacing: 3px;
+}
+
+.load-code-content > p {
+    margin: 0;
+    color: #AAAAAA;
+    font-size: 12px;
+    line-height: 1.5;
 }
 
 .load-code-content label {
@@ -586,6 +688,17 @@ html[data-color-textures="off"] .color-swatch {
     border-color: #FFFFFF;
     background: #FFFFFF;
     color: #000000;
+}
+
+#confirm-clear-map-button {
+    border-color: #FFFFFF;
+    background: #FFFFFF;
+    color: #000000;
+}
+
+#confirm-clear-map-button:hover {
+    border-color: #D5D5D5;
+    background: #D5D5D5;
 }
 
 

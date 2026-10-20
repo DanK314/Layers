@@ -3,6 +3,8 @@ import {
     areColorTexturesEnabled,
     setColorTexturesEnabled
 } from "./texture.js";
+import { MapParser } from "./map.js";
+import { loadMap } from "./map-api.js";
 
 
 const titleScreen =
@@ -14,6 +16,21 @@ const gameScreen =
 const canvas =
     document.getElementById("canvas");
 
+const userMapDialog =
+    document.getElementById("user-map-dialog");
+
+const userMapForm =
+    document.getElementById("user-map-form");
+
+const userMapInput =
+    document.getElementById("user-map-input");
+
+const userMapError =
+    document.getElementById("user-map-error");
+
+const loadUserMapButton =
+    document.getElementById("load-user-map-button");
+
 const menuItems = [
     ...document.querySelectorAll(".menu-item")
 ];
@@ -22,6 +39,7 @@ const menuItems = [
 let selectedIndex = 0;
 
 let gameStarted = false;
+let userMapLoading = false;
 let game = null;
 const backgroundMusic = new Audio("./bgm/Layers.wav");
 backgroundMusic.loop = true;
@@ -128,6 +146,10 @@ function selectMenu() {
             startGame();
             break;
 
+        case "user-map":
+            openUserMapDialog();
+            break;
+
         case "map-maker":
             openMapMaker();
             break;
@@ -154,7 +176,7 @@ function updateTextureMenuItem() {
    START GAME
 ===================================== */
 
-function startGame() {
+function startGame(customStage = null) {
 
     if (gameStarted) return;
 
@@ -174,10 +196,149 @@ function startGame() {
         window.innerHeight;
 
 
-    game = new Game(canvas);
+    game = new Game(canvas, customStage);
 
     game.run();
 }
+
+function parseUserMapId(value) {
+    const input = value.trim();
+
+    if (/^[1-9]\d*$/.test(input)) {
+        return input;
+    }
+
+    let url;
+
+    try {
+        url = new URL(input);
+    } catch {
+        throw new Error("Enter a map number or a valid map share link.");
+    }
+
+    const mapId = url.searchParams.get("map");
+
+    if (!mapId || !/^[1-9]\d*$/.test(mapId)) {
+        throw new Error("That link does not contain a valid map number.");
+    }
+
+    return mapId;
+}
+
+function parseUserMapData(response) {
+    const mapData = response?.mapData;
+
+    if (
+        !mapData ||
+        !Number.isInteger(mapData.width) ||
+        !Number.isInteger(mapData.height) ||
+        mapData.width < 1 ||
+        mapData.height < 1 ||
+        mapData.width > 128 ||
+        mapData.height > 128 ||
+        !Array.isArray(mapData.color) ||
+        !Array.isArray(mapData.object) ||
+        mapData.color.length !== mapData.height ||
+        mapData.object.length !== mapData.height
+    ) {
+        throw new Error("The uploaded map data is invalid.");
+    }
+
+    for (const [layerName, layer] of [
+        ["color", mapData.color],
+        ["object", mapData.object]
+    ]) {
+        if (
+            layer.some(row =>
+                !Array.isArray(row) ||
+                row.length !== mapData.width ||
+                row.some(cell => typeof cell !== "string" || cell.length !== 1)
+            )
+        ) {
+            throw new Error(`The uploaded map's ${layerName} layer is invalid.`);
+        }
+    }
+
+    const stage = MapParser.parse({
+        width: mapData.width,
+        height: mapData.height,
+        color: mapData.color.map(row => row.join("")).join("\n"),
+        object: mapData.object.map(row => row.join("")).join("\n")
+    });
+
+    if (stage.objects.player.length !== 1) {
+        throw new Error("The uploaded map must contain exactly one player start.");
+    }
+
+    return stage;
+}
+
+function openUserMapDialog() {
+    if (gameStarted || userMapLoading) return;
+
+    userMapError.hidden = true;
+    userMapInput.value = "";
+    userMapDialog.showModal();
+    userMapInput.focus();
+}
+
+async function startUserMap(mapIdInput, showDialogErrors = false) {
+    if (gameStarted || userMapLoading) return;
+
+    let mapId;
+
+    try {
+        mapId = parseUserMapId(mapIdInput);
+    } catch (error) {
+        if (showDialogErrors) {
+            userMapError.textContent = error.message;
+            userMapError.hidden = false;
+        } else {
+            window.alert(error.message);
+        }
+
+        return;
+    }
+
+    userMapLoading = true;
+    loadUserMapButton.disabled = true;
+    userMapError.hidden = true;
+
+    try {
+        const response = await loadMap(mapId);
+        const stage = parseUserMapData(response);
+
+        if (userMapDialog.open) {
+            userMapDialog.close();
+        }
+
+        startGame(stage);
+    } catch (error) {
+        console.error("User map loading failed:", error);
+
+        const message = `Could not load user map: ${error.message}`;
+
+        if (showDialogErrors) {
+            userMapError.textContent = message;
+            userMapError.hidden = false;
+        } else {
+            window.alert(message);
+        }
+    } finally {
+        userMapLoading = false;
+        loadUserMapButton.disabled = false;
+    }
+}
+
+userMapForm.addEventListener("submit", event => {
+    event.preventDefault();
+    void startUserMap(userMapInput.value, true);
+});
+
+document.getElementById("cancel-user-map-button").addEventListener(
+    "click",
+    () => userMapDialog.close()
+);
 
 
 /* =====================================
@@ -186,7 +347,7 @@ function startGame() {
 
 function openMapMaker() {
 
-    if (gameStarted) return;
+    if (gameStarted || userMapLoading || userMapDialog.open) return;
 
     gameStarted = true;
 
@@ -262,3 +423,9 @@ window.addEventListener("pageshow", (event) => {
 
 updateMenu();
 updateTextureMenuItem();
+
+const sharedMapId = new URLSearchParams(window.location.search).get("map");
+
+if (sharedMapId) {
+    void startUserMap(sharedMapId);
+}

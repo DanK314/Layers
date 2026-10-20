@@ -23,6 +23,10 @@
                 PLAY
             </div>
 
+            <div class="menu-item" data-menu="user-map">
+                USER MAP
+            </div>
+
             <div class="menu-item" data-menu="map-maker">
                 MAP MAKER
             </div>
@@ -45,6 +49,19 @@
     <div id="game-screen">
         <canvas id="canvas"></canvas>
     </div>
+
+    <dialog id="user-map-dialog" aria-labelledby="user-map-title">
+        <form id="user-map-form">
+            <h2 id="user-map-title">USER MAP</h2>
+            <label for="user-map-input">Enter a map number or paste a share link:</label>
+            <input id="user-map-input" type="text" autocomplete="off" required>
+            <p id="user-map-error" role="alert" hidden></p>
+            <div class="user-map-actions">
+                <button id="cancel-user-map-button" type="button">CANCEL</button>
+                <button id="load-user-map-button" type="submit">LOAD MAP</button>
+            </div>
+        </form>
+    </dialog>
 </body>
 
 </html>
