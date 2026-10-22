@@ -355,17 +355,10 @@ export class Game {
         }
     }
 
-    #keyDown(event) {
-
-        if (event.code !== "Enter") {
-            return;
-        }
-
+    cycleLayer() {
         if (this.#transitioning) {
             return;
         }
-
-        event.preventDefault();
 
         switch (this.#activeLayer) {
 
@@ -382,9 +375,9 @@ export class Game {
                 break;
         }
 
-            this.#layerFlashColor = this.#layerColors[this.#activeLayer];
-            this.#layerFlashTime = this.#layerFlashDuration;
-            this.#layerFlashElapsed = 0;
+        this.#layerFlashColor = this.#layerColors[this.#activeLayer];
+        this.#layerFlashTime = this.#layerFlashDuration;
+        this.#layerFlashElapsed = 0;
 
         const layerSound = this.#layerSounds[this.#activeLayer];
         layerSound.volume = {
@@ -394,6 +387,34 @@ export class Game {
         }[this.#activeLayer];
         layerSound.currentTime = 0;
         layerSound.play().catch(() => {});
+    }
+
+    #keyDown(event) {
+
+        if (event.code !== "Enter") {
+            return;
+        }
+
+        event.preventDefault();
+        this.cycleLayer();
+    }
+
+    setInput(direction, active) {
+        if (!this.#player) {
+            return;
+        }
+
+        if (direction === "left" || direction === "right") {
+            this.#player.setHorizontalInput(direction, active);
+        }
+    }
+
+    jump() {
+        if (!this.#player) {
+            return;
+        }
+
+        this.#player.jump();
     }
 
     update(deltaTime) {

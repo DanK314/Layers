@@ -21,7 +21,11 @@ const copyButton = document.querySelector("#copy-button");
 const resizeButton = document.querySelector("#resize-button");
 const mapWidthInput = document.querySelector("#map-width-input");
 const mapHeightInput = document.querySelector("#map-height-input");
+const centerViewButton = document.querySelector("#center-view-button");
+const panModeButton = document.querySelector("#pan-mode-button");
 const testButton = document.querySelector("#test-button");
+const editorMenuToggle = document.querySelector("#editor-menu-toggle");
+const editorActionsMenu = document.querySelector("#editor-actions-menu");
 const textureToggleButton = document.querySelector("#texture-toggle-button");
 const gamePreview = document.querySelector("#game-preview");
 const previewCanvas = document.querySelector("#preview-canvas");
@@ -69,6 +73,42 @@ uploadPanel.append(
 
 copyButton.insertAdjacentElement("afterend", uploadPanel);
 
+function toggleEditorMenu(forceOpen) {
+    const nextOpen = typeof forceOpen === "boolean"
+        ? forceOpen
+        : !editorActionsMenu.classList.contains("open");
+
+    editorActionsMenu.classList.toggle("open", nextOpen);
+    editorMenuToggle.setAttribute("aria-expanded", String(nextOpen));
+}
+
+editorMenuToggle.addEventListener("click", () => {
+    toggleEditorMenu();
+});
+
+editorActionsMenu.addEventListener("click", event => {
+    if (event.target.closest("button")) {
+        toggleEditorMenu(false);
+    }
+});
+
+panModeButton.addEventListener("click", () => {
+    panModeEnabled = !panModeEnabled;
+    panModeButton.textContent = `PAN: ${panModeEnabled ? "ON" : "OFF"}`;
+    panModeButton.setAttribute("aria-pressed", String(panModeEnabled));
+    canvas.classList.toggle("pan-mode", panModeEnabled);
+});
+
+document.addEventListener("click", event => {
+    const target = event.target;
+
+    if (
+        !editorActionsMenu.contains(target) &&
+        !editorMenuToggle.contains(target)
+    ) {
+        toggleEditorMenu(false);
+    }
+});
 
 /*
  * 맵 설정
@@ -102,7 +142,21 @@ let objectMap = createObjectMap();
  */
 
 let isMouseDown = false;
+let isPanning = false;
+let panModeEnabled = false;
+let panX = 0;
+let panY = 0;
+let lastPanPoint = null;
+let activePointerId = null;
+const activePointers = new Map();
+let pinchStart = null;
+let ignorePointersUntilReleased = false;
+let viewScale = 1;
 let previewGame = null;
+
+function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+}
 
 function updateTextureToggle() {
     const enabled = areColorTexturesEnabled();
@@ -244,6 +298,7 @@ function resizeMaps(width, height) {
     mapWidthInput.value = String(MAP_WIDTH);
     mapHeightInput.value = String(MAP_HEIGHT);
 
+    recenterMapView();
     draw();
 }
 
@@ -264,6 +319,7 @@ function resizeCanvas() {
     canvas.width = size;
     canvas.height = size;
 
+    recenterMapView();
     draw();
 }
 
@@ -279,10 +335,63 @@ window.addEventListener(
  */
 
 function getCellSize() {
+    const baseCellSize =
+        Math.min(canvas.width, canvas.height) /
+        Math.max(MAP_WIDTH, MAP_HEIGHT);
 
-    return canvas.width / MAP_WIDTH;
+    return baseCellSize * viewScale;
 }
 
+function recenterMapView() {
+    const cellSize = getCellSize();
+    const mapWidthPx = MAP_WIDTH * cellSize;
+    const mapHeightPx = MAP_HEIGHT * cellSize;
+
+    panX = (canvas.width - mapWidthPx) / 2;
+    panY = (canvas.height - mapHeightPx) / 2;
+}
+
+function resetMapView() {
+    viewScale = 1;
+    recenterMapView();
+    draw();
+}
+
+function getCanvasPoint(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+        x: (clientX - rect.left) / rect.width * canvas.width,
+        y: (clientY - rect.top) / rect.height * canvas.height
+    };
+}
+
+function getPointerDistanceAndCenter() {
+    const [first, second] = [...activePointers.values()];
+
+    return {
+        distance: Math.hypot(second.x - first.x, second.y - first.y),
+        centerX: (first.x + second.x) / 2,
+        centerY: (first.y + second.y) / 2
+    };
+}
+
+function zoomAt(nextScale, pointerX, pointerY, anchor = null) {
+    const clampedScale = clamp(nextScale, 0.5, 2.2);
+    if (clampedScale === viewScale) {
+        return;
+    }
+
+    const previousCellSize = getCellSize();
+    const worldX = anchor?.worldX ?? (pointerX - panX) / previousCellSize;
+    const worldY = anchor?.worldY ?? (pointerY - panY) / previousCellSize;
+
+    viewScale = clampedScale;
+    const nextCellSize = getCellSize();
+    panX = pointerX - worldX * nextCellSize;
+    panY = pointerY - worldY * nextCellSize;
+    draw();
+}
 
 /*
  * 캔버스 좌표 → 맵 좌표
@@ -295,12 +404,14 @@ function getCellFromMouse(event) {
     const x =
         (event.clientX - rect.left) /
         rect.width *
-        canvas.width;
+        canvas.width -
+        panX;
 
     const y =
         (event.clientY - rect.top) /
         rect.height *
-        canvas.height;
+        canvas.height -
+        panY;
 
     const cellSize = getCellSize();
 
@@ -336,8 +447,8 @@ function drawCell(x, y) {
 
     const cellSize = getCellSize();
 
-    const px = x * cellSize;
-    const py = y * cellSize;
+    const px = x * cellSize + panX;
+    const py = y * cellSize + panY;
 
     const color = colorMap[y][x];
     const object = objectMap[y][x];
@@ -747,10 +858,57 @@ function paintCell(x, y) {
  */
 
 canvas.addEventListener(
-    "mousedown",
+    "pointerdown",
     event => {
+        if (event.pointerType === "touch") {
+            activePointers.set(event.pointerId, getCanvasPoint(event.clientX, event.clientY));
+            canvas.setPointerCapture(event.pointerId);
+
+            if (activePointers.size >= 2) {
+                const { distance, centerX, centerY } = getPointerDistanceAndCenter();
+                if (distance > 0) {
+                    const cellSize = getCellSize();
+
+                    pinchStart = {
+                        distance,
+                        scale: viewScale,
+                        worldX: (centerX - panX) / cellSize,
+                        worldY: (centerY - panY) / cellSize
+                    };
+                }
+                ignorePointersUntilReleased = true;
+                isMouseDown = false;
+                isPanning = false;
+                activePointerId = null;
+                canvas.classList.remove("panning");
+                event.preventDefault();
+                return;
+            }
+        }
+
+        if (ignorePointersUntilReleased) {
+            event.preventDefault();
+            return;
+        }
+
+        if (event.button === 1 || event.altKey || panModeEnabled) {
+            isPanning = true;
+            isMouseDown = false;
+            lastPanPoint = {
+                x: event.clientX,
+                y: event.clientY
+            };
+            activePointerId = event.pointerId;
+            canvas.setPointerCapture(event.pointerId);
+            canvas.classList.add("panning");
+            event.preventDefault();
+            return;
+        }
 
         isMouseDown = true;
+        activePointerId = event.pointerId;
+        canvas.setPointerCapture(event.pointerId);
+        event.preventDefault();
 
         const cell =
             getCellFromMouse(event);
@@ -767,15 +925,39 @@ canvas.addEventListener(
 );
 
 
-/*
- * 마우스 이동
- *
- * 누른 상태에서 드래그 페인팅
- */
-
 canvas.addEventListener(
-    "mousemove",
+    "pointermove",
     event => {
+        if (activePointers.has(event.pointerId)) {
+            activePointers.set(event.pointerId, getCanvasPoint(event.clientX, event.clientY));
+
+            if (pinchStart && activePointers.size >= 2) {
+                const { distance, centerX, centerY } = getPointerDistanceAndCenter();
+                const nextScale = pinchStart.scale * distance / pinchStart.distance;
+                zoomAt(nextScale, centerX, centerY, pinchStart);
+                return;
+            }
+        }
+
+        if (ignorePointersUntilReleased) {
+            return;
+        }
+
+        if (event.pointerId !== activePointerId) {
+            return;
+        }
+
+        if (isPanning) {
+            const rect = canvas.getBoundingClientRect();
+            panX += (event.clientX - lastPanPoint.x) * canvas.width / rect.width;
+            panY += (event.clientY - lastPanPoint.y) * canvas.height / rect.height;
+            lastPanPoint = {
+                x: event.clientX,
+                y: event.clientY
+            };
+            draw();
+            return;
+        }
 
         if (!isMouseDown) {
             return;
@@ -795,19 +977,55 @@ canvas.addEventListener(
     }
 );
 
+canvas.addEventListener("wheel", event => {
+    if (previewGame) {
+        return;
+    }
+
+    event.preventDefault();
+
+    const previousScale = viewScale;
+    const nextScale = clamp(viewScale + (event.deltaY < 0 ? 0.12 : -0.12), 0.5, 2.2);
+
+    if (nextScale === previousScale) {
+        return;
+    }
+
+    const { x, y } = getCanvasPoint(event.clientX, event.clientY);
+    zoomAt(nextScale, x, y);
+}, { passive: false });
+
+function finishPointerInteraction(event) {
+    if (event?.pointerId !== undefined) {
+        activePointers.delete(event.pointerId);
+    }
+
+    if (activePointers.size < 2) {
+        pinchStart = null;
+    }
+
+    if (activePointers.size === 0) {
+        ignorePointersUntilReleased = false;
+    }
+
+    if (event && event.pointerId !== activePointerId) {
+        return;
+    }
+
+    isMouseDown = false;
+    isPanning = false;
+    lastPanPoint = null;
+    activePointerId = null;
+    canvas.classList.remove("panning");
+}
 
 /*
  * 마우스 버튼 해제
  */
 
-window.addEventListener(
-    "mouseup",
-    () => {
-
-        isMouseDown = false;
-
-    }
-);
+window.addEventListener("pointerup", finishPointerInteraction);
+window.addEventListener("pointercancel", finishPointerInteraction);
+canvas.addEventListener("lostpointercapture", finishPointerInteraction);
 
 
 /*
@@ -1244,6 +1462,7 @@ submitLoadCodeButton.addEventListener(
             mapWidthInput.value = String(MAP_WIDTH);
             mapHeightInput.value = String(MAP_HEIGHT);
 
+            recenterMapView();
             draw();
             loadCodeDialog.close();
 
@@ -1349,7 +1568,12 @@ resizeButton.addEventListener(
     }
 );
 
+centerViewButton.addEventListener("click", () => {
+    resetMapView();
+});
+
 resizeCanvas();
+recenterMapView();
 selectObject("#");
 selectColor("W");
 updateTextureToggle();

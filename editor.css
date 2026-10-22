@@ -403,6 +403,7 @@ html[data-color-textures="off"] .color-swatch {
  */
 
 #map-editor {
+    position: relative;
     flex: 1;
 
     min-width: 0;
@@ -415,6 +416,37 @@ html[data-color-textures="off"] .color-swatch {
     overflow: hidden;
 }
 
+#map-view-controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    display: flex;
+    gap: 8px;
+}
+
+#map-view-controls button {
+    min-width: 64px;
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid #555555;
+    background: rgba(8, 8, 8, 0.88);
+    color: #FFFFFF;
+    font-size: 10px;
+    letter-spacing: 1px;
+    touch-action: manipulation;
+}
+
+#map-view-controls button[aria-pressed="true"] {
+    border-color: #FFFFFF;
+    background: #FFFFFF;
+    color: #000000;
+}
+
+#map-view-controls button:focus-visible {
+    outline: 1px solid #FFFFFF;
+    outline-offset: 3px;
+}
 
 /*
  * Map canvas
@@ -430,8 +462,17 @@ html[data-color-textures="off"] .color-swatch {
             calc(100vw - 180px));
 
     image-rendering: pixelated;
+    touch-action: none;
 
     cursor: crosshair;
+}
+
+#map-canvas.pan-mode {
+    cursor: grab;
+}
+
+#map-canvas.pan-mode.panning {
+    cursor: grabbing;
 }
 
 
@@ -440,6 +481,7 @@ html[data-color-textures="off"] .color-swatch {
  */
 
 #editor-footer {
+    position: relative;
     height: 70px;
     flex-shrink: 0;
 
@@ -485,6 +527,88 @@ html[data-color-textures="off"] .color-swatch {
 
     background: #111111;
     color: #FFFFFF;
+}
+
+#editor-actions-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+#editor-menu-toggle {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    padding: 0;
+    border: 1px solid #333333;
+    background: #111111;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+#editor-menu-toggle:hover,
+#editor-menu-toggle:focus-visible {
+    border-color: #FFFFFF;
+    background: #FFFFFF;
+}
+
+#editor-menu-toggle span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: #FFFFFF;
+    transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease;
+}
+
+#editor-menu-toggle:hover span,
+#editor-menu-toggle:focus-visible span {
+    background: #000000;
+}
+
+#editor-menu-toggle[aria-expanded="true"] {
+    transform: rotate(90deg);
+}
+
+#editor-menu-toggle[aria-expanded="true"] span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+}
+
+#editor-menu-toggle[aria-expanded="true"] span:nth-child(2) {
+    opacity: 0;
+}
+
+#editor-menu-toggle[aria-expanded="true"] span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+}
+
+#editor-actions-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 12px);
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid #333333;
+    background: rgba(8, 8, 8, 0.97);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.38);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
+    z-index: 10;
+}
+
+#editor-actions-menu.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
 }
 
 

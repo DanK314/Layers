@@ -35,6 +35,7 @@ const menuItems = [
     ...document.querySelectorAll(".menu-item")
 ];
 
+const mobileControls = document.getElementById("mobile-controls");
 
 let selectedIndex = 0;
 
@@ -92,6 +93,16 @@ function updateMenu() {
 
     });
 }
+
+menuItems.forEach((item, index) => {
+    item.addEventListener("click", () => {
+        if (gameStarted) return;
+
+        selectedIndex = index;
+        updateMenu();
+        selectMenu();
+    });
+});
 
 
 /* =====================================
@@ -169,6 +180,67 @@ function updateTextureMenuItem() {
 
     textureMenuItem.textContent =
         `TEXTURES: ${areColorTexturesEnabled() ? "ON" : "OFF"}`;
+}
+
+function bindMobileControl(control, press, release = null) {
+    const button = document.querySelector(`[data-control="${control}"]`);
+
+    if (!button) {
+        return;
+    }
+
+    const handlePress = (event) => {
+        event.preventDefault();
+        button.classList.add("pressed");
+        press();
+    };
+
+    const handleRelease = (event) => {
+        event.preventDefault();
+        button.classList.remove("pressed");
+        if (release) {
+            release();
+        }
+    };
+
+    button.addEventListener("pointerdown", handlePress);
+    button.addEventListener("pointerup", handleRelease);
+    button.addEventListener("pointerleave", handleRelease);
+    button.addEventListener("pointercancel", handleRelease);
+}
+
+function setupMobileControls() {
+    bindMobileControl("left", () => {
+        if (game) {
+            game.setInput("left", true);
+        }
+    }, () => {
+        if (game) {
+            game.setInput("left", false);
+        }
+    });
+
+    bindMobileControl("right", () => {
+        if (game) {
+            game.setInput("right", true);
+        }
+    }, () => {
+        if (game) {
+            game.setInput("right", false);
+        }
+    });
+
+    bindMobileControl("jump", () => {
+        if (game) {
+            game.jump();
+        }
+    });
+
+    bindMobileControl("layer", () => {
+        if (game) {
+            game.cycleLayer();
+        }
+    });
 }
 
 
@@ -423,6 +495,7 @@ window.addEventListener("pageshow", (event) => {
 
 updateMenu();
 updateTextureMenuItem();
+setupMobileControls();
 
 const sharedMapId = new URLSearchParams(window.location.search).get("map");
 

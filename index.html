@@ -48,6 +48,18 @@
     </div>
     <div id="game-screen">
         <canvas id="canvas"></canvas>
+
+        <div id="mobile-controls" aria-label="Touch controls">
+            <div class="mobile-controls-left">
+                <button class="mobile-control" data-control="left" type="button" aria-label="Move left">◀</button>
+                <button class="mobile-control" data-control="right" type="button" aria-label="Move right">▶</button>
+            </div>
+
+            <div class="mobile-controls-right">
+                <button class="mobile-control mobile-control-layer" data-control="layer" type="button" aria-label="Switch layer">LAYER</button>
+                <button class="mobile-control mobile-control-jump" data-control="jump" type="button" aria-label="Jump">JUMP</button>
+            </div>
+        </div>
     </div>
 
     <dialog id="user-map-dialog" aria-labelledby="user-map-title">

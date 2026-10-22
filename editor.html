@@ -156,6 +156,15 @@
 
                 <canvas id="map-canvas"></canvas>
 
+                <div id="map-view-controls" aria-label="Map view controls">
+                    <button id="pan-mode-button" type="button" aria-pressed="false">
+                        PAN: OFF
+                    </button>
+                    <button id="center-view-button" type="button">
+                        CENTER
+                    </button>
+                </div>
+
             </section>
 
         </section>
@@ -183,29 +192,39 @@
 
             </div>
 
-            <button id="clear-button">
-                CLEAR
-            </button>
+            <div id="editor-actions-wrap">
+                <button id="editor-menu-toggle" type="button" aria-expanded="false" aria-controls="editor-actions-menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
 
-            <button id="save-button">
-                SAVE
-            </button>
+                <div id="editor-actions-menu" role="menu" aria-label="Map actions">
+                    <button id="clear-button" type="button">
+                        CLEAR
+                    </button>
 
-            <button id="load-button">
-                LOAD
-            </button>
+                    <button id="save-button" type="button">
+                        SAVE
+                    </button>
 
-            <button id="load-code-button">
-                LOAD WITH CODE
-            </button>
+                    <button id="load-button" type="button">
+                        LOAD
+                    </button>
 
-            <button id="copy-button">
-                COPY CODE
-            </button>
+                    <button id="load-code-button" type="button">
+                        LOAD WITH CODE
+                    </button>
 
-            <button id="test-button">
-                TEST MAP
-            </button>
+                    <button id="copy-button" type="button">
+                        COPY CODE
+                    </button>
+
+                    <button id="test-button" type="button">
+                        TEST MAP
+                    </button>
+                </div>
+            </div>
 
         </footer>
 

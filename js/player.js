@@ -127,6 +127,21 @@ export class Player extends GameObject {
         }
     }
 
+    setHorizontalInput(direction, active) {
+        if (direction === "left") {
+            this.#keys.left = Boolean(active);
+            return;
+        }
+
+        if (direction === "right") {
+            this.#keys.right = Boolean(active);
+        }
+    }
+
+    jump() {
+        this.#jump();
+    }
+
     #jump() {
 
         if (!this.#isGrounded) {
