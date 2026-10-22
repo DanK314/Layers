@@ -28,7 +28,7 @@ button {
 
 
 /*
- * 전체 에디터
+ * Full editor
  */
 
 #editor {
@@ -41,7 +41,7 @@ button {
 
 
 /*
- * 헤더
+ * Header
  */
 
 #editor-header {
@@ -88,7 +88,7 @@ button {
 
 
 /*
- * 에디터 본체
+ * Editor body
  */
 
 #editor-body {
@@ -101,7 +101,7 @@ button {
 
 
 /*
- * 왼쪽 팔레트
+ * Left palette
  */
 
 #palette {
@@ -123,7 +123,7 @@ button {
 
 
 /*
- * 팔레트 제목
+ * Palette title
  */
 
 .palette-title {
@@ -142,7 +142,7 @@ button {
 
 
 /*
- * 오브젝트 팔레트
+ * Object palette
  */
 
 #object-palette {
@@ -156,7 +156,7 @@ button {
 
 
 /*
- * 오브젝트 버튼
+ * Object buttons
  */
 
 .object-button {
@@ -192,7 +192,7 @@ button {
 
 
 /*
- * 오브젝트 숫자
+ * Object number
  */
 
 .object-number {
@@ -202,7 +202,7 @@ button {
 
 
 /*
- * 오브젝트 기호
+ * Object symbol
  */
 
 .object-symbol {
@@ -214,7 +214,7 @@ button {
 
 
 /*
- * 오브젝트 이름
+ * Object name
  */
 
 .object-name {
@@ -228,7 +228,7 @@ button {
 
 
 /*
- * 팔레트 구분선
+ * Palette divider
  */
 
 .palette-divider {
@@ -242,7 +242,7 @@ button {
 
 
 /*
- * 색상 팔레트
+ * Color palette
  */
 
 #color-palette {
@@ -270,7 +270,7 @@ button {
 
 
 /*
- * 색상 버튼
+ * Color buttons
  */
 
 .color-button {
@@ -308,7 +308,7 @@ button {
 
 
 /*
- * 색상 스와치
+ * Color swatches
  */
 
 .color-swatch {
@@ -324,7 +324,7 @@ button {
 
 
 /*
- * 색상
+ * Colors
  */
 
 .color-red {
@@ -399,7 +399,7 @@ html[data-color-textures="off"] .color-swatch {
 
 
 /*
- * 맵 에디터 영역
+ * Map editor area
  */
 
 #map-editor {
@@ -417,7 +417,7 @@ html[data-color-textures="off"] .color-swatch {
 
 
 /*
- * 맵 Canvas
+ * Map canvas
  */
 
 #map-canvas {
@@ -436,7 +436,7 @@ html[data-color-textures="off"] .color-swatch {
 
 
 /*
- * 하단 컨트롤
+ * Bottom controls
  */
 
 #editor-footer {
@@ -489,7 +489,7 @@ html[data-color-textures="off"] .color-swatch {
 
 
 /*
- * 하단 버튼
+ * Bottom buttons
  */
 
 #editor-footer button {

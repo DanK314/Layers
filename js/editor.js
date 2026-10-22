@@ -49,7 +49,7 @@ shareLink.id = "share-map-link";
 shareLink.type = "text";
 shareLink.readOnly = true;
 shareLink.hidden = true;
-shareLink.setAttribute("aria-label", "맵 공유 링크");
+shareLink.setAttribute("aria-label", "Map share link");
 
 const copyShareButton = document.createElement("button");
 copyShareButton.id = "copy-share-link-button";
@@ -989,7 +989,7 @@ function validateMap() {
     if (playerCount === 0) {
 
         alert(
-            "PLAYER(@)가 없습니다."
+            "PLAYER(@) is missing."
         );
 
         return false;
@@ -999,7 +999,7 @@ function validateMap() {
     if (playerCount > 1) {
 
         alert(
-            "PLAYER(@)는 하나만 존재해야 합니다."
+            "Only one PLAYER(@) is allowed."
         );
 
         return false;
@@ -1009,7 +1009,7 @@ function validateMap() {
     if (goalCount > 1) {
 
         alert(
-            "GOAL($)은 하나만 존재해야 합니다."
+            "Only one GOAL($) is allowed."
         );
 
         return false;
@@ -1057,7 +1057,7 @@ copyButton.addEventListener(
             console.error(error);
 
             alert(
-                "코드를 복사할 수 없습니다."
+                "Unable to copy code."
             );
         }
     }
@@ -1119,7 +1119,7 @@ loadButton.addEventListener(
         if (!saved) {
 
             alert(
-                "저장된 맵이 없습니다."
+                "No saved map found."
             );
 
             return;
@@ -1199,7 +1199,7 @@ loadButton.addEventListener(
             console.error(error);
 
             alert(
-                "맵 데이터를 불러올 수 없습니다."
+                "Unable to load map data."
             );
         }
     }
@@ -1261,7 +1261,7 @@ uploadButton.addEventListener("click", async () => {
     if (uploadButton.disabled) return;
     if (!validateMap()) return;
 
-    const titleInput = prompt("맵 이름을 입력하세요.", "Untitled");
+    const titleInput = prompt("Enter a map name.", "Untitled");
 
     if (titleInput === null) return;
 
@@ -1276,7 +1276,7 @@ uploadButton.addEventListener("click", async () => {
     };
 
     uploadButton.disabled = true;
-    uploadStatus.textContent = "맵 업로드 중...";
+    uploadStatus.textContent = "Uploading map...";
     copyShareButton.hidden = true;
     shareLink.hidden = true;
 
@@ -1291,7 +1291,7 @@ uploadButton.addEventListener("click", async () => {
         copyShareButton.hidden = false;
 
         uploadStatus.textContent =
-            `업로드 완료! 맵 번호: ${result.mapId}`;
+            `Upload complete! Map number: ${result.mapId}`;
 
     } catch (error) {
         console.error("Map upload failed:", error);
@@ -1302,10 +1302,10 @@ uploadButton.addEventListener("click", async () => {
                 : 600;
 
             uploadStatus.textContent =
-                `업로드 제한: ${seconds}초 후 다시 시도하세요.`;
+                `Upload limit reached: please try again in ${seconds} seconds.`;
         } else {
             uploadStatus.textContent =
-                `업로드 실패: ${error.message}`;
+                `Upload failed: ${error.message}`;
         }
     } finally {
         uploadButton.disabled = false;
@@ -1325,7 +1325,7 @@ copyShareButton.addEventListener("click", async () => {
         shareLink.focus();
         shareLink.select();
         uploadStatus.textContent =
-            "링크를 선택했어요. Ctrl+C로 복사하세요.";
+            "Link selected. Press Ctrl+C to copy.";
     }
 });
 

@@ -14,7 +14,7 @@ async function requestJSON(path, options = {}) {
 
     if (!response.ok) {
         const error = new Error(
-            result.error || `요청 실패: HTTP ${response.status}`
+            result.error || `Request failed: HTTP ${response.status}`
         );
 
         error.status = response.status;
@@ -39,7 +39,7 @@ export async function loadMap(mapId) {
     const id = String(mapId);
 
     if (!/^[1-9]\d*$/.test(id)) {
-        throw new Error("올바른 맵 번호를 입력하세요.");
+        throw new Error("Enter a valid map number.");
     }
 
     return requestJSON(`/api/maps/${id}`);

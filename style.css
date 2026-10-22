@@ -22,7 +22,7 @@
     }
 }
 
-/* ===== 기본 설정 ===== */
+/* ===== Basic settings ===== */
 
 * {
     box-sizing: border-box;
@@ -43,7 +43,7 @@ body {
 }
 
 
-/* ===== 게임 화면 ===== */
+/* ===== Game screen ===== */
 
 body {
     width: 100vw;
@@ -173,14 +173,14 @@ body {
 }
 
 
-/* 선택되지 않은 메뉴 */
+/* Unselected menu */
 
 .menu-item:not(.selected) {
     opacity: 0.3;
 }
 
 
-/* 선택된 메뉴 */
+/* Selected menu */
 
 .menu-item.selected {
     opacity: 1;
@@ -189,7 +189,7 @@ body {
 }
 
 
-/* 선택 화살표 */
+/* Selection arrow */
 
 .menu-item.selected::before {
     content: ">";
@@ -229,7 +229,7 @@ body {
 }
 
 
-/* ENTER와 MOVE 사이 간격 */
+/* Spacing between ENTER and MOVE */
 
 #menu-helper span:nth-child(3) {
     margin-left: 20px;
