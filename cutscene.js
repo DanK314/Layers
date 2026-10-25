@@ -2398,15 +2398,7 @@ function update(delta) {
 
 function onCutsceneEnd() {
 
-    /*
-     * 기존 게임 시작 코드로 연결.
-     */
-
-    console.log(
-        "LAYER:S CUTSCENE END"
-    );
-
-    // window.location.href = "../index.html";
+    window.location.href = "./index.html?startGame=1";
 }
 
 

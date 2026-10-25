@@ -31,6 +31,7 @@ export class Player extends GameObject {
 
     // 렌더링
     #ctx;
+    #onJump;
 
     // 젤리 시각 효과
     #stretch = 0;
@@ -39,7 +40,7 @@ export class Player extends GameObject {
     #keyDownHandler = (event) => this.#keyDown(event);
     #keyUpHandler = (event) => this.#keyUp(event);
 
-    constructor(ctx, x, y) {
+    constructor(ctx, x, y, onJump = null) {
 
         super(
             ctx,
@@ -58,6 +59,7 @@ export class Player extends GameObject {
         );
 
         this.#ctx = ctx;
+        this.#onJump = onJump;
 
         this.#spawnX = x;
         this.#spawnY = y;
@@ -152,6 +154,7 @@ export class Player extends GameObject {
 
         this.vy = -820;
         this.#isGrounded = false;
+        this.#onJump?.();
 
         this.#jumpSound.volume = jumpSoundVolume;
         this.#jumpSound.currentTime = 0;

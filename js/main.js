@@ -167,7 +167,7 @@ function selectMenu() {
     switch (menu) {
 
         case "play":
-            startGame();
+            window.location.href = "./cutscene.html";
             break;
 
         case "user-map":
@@ -266,7 +266,7 @@ function setupMobileControls() {
    START GAME
 ===================================== */
 
-function startGame(customStage = null) {
+function startGame(customStage = null, startFromSky = false) {
 
     if (gameStarted) return;
 
@@ -285,10 +285,22 @@ function startGame(customStage = null) {
     game = new Game(
         canvas,
         customStage,
-        stageEnded => gameScreen.classList.toggle("stage-ended", stageEnded)
+        stageEnded => gameScreen.classList.toggle("stage-ended", stageEnded),
+        startFromSky
     );
 
     game.run();
+
+    const documentElement = document.documentElement;
+
+    if (documentElement.classList.contains("starting-game")) {
+        requestAnimationFrame(() => {
+            documentElement.classList.add("fade-in");
+            window.setTimeout(() => {
+                documentElement.classList.remove("starting-game", "fade-in");
+            }, 650);
+        });
+    }
 }
 
 closeTutorialButton.addEventListener("click", () => tutorialDialog.close());
@@ -536,7 +548,11 @@ updateTextureMenuItem();
 setupMobileControls();
 
 const sharedMapId = new URLSearchParams(window.location.search).get("map");
+const startAfterCutscene =
+    new URLSearchParams(window.location.search).get("startGame") === "1";
 
 if (sharedMapId) {
     void startUserMap(sharedMapId);
+} else if (startAfterCutscene) {
+    startGame(null, true);
 }

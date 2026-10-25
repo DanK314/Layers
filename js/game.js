@@ -8,6 +8,8 @@ import { MiniBlackhole } from "./mini-blackhole.js";
 
 const PLAYER_FLASHLIGHT_SIZE = 600;
 const CAMERA_SMOOTHING = 8;
+const CAMERA_VIEW_TILES = 12;
+const VOID_DEATH_MARGIN = 15 * 64;
 
 const layerChangeSoundVolume = 0.1;
 
@@ -46,6 +48,8 @@ export class Game {
     #scale = 1;
     #offsetX = 0;
     #offsetY = 0;
+    #cameraAnchorY = null;
+    #fallingStars = [];
 
     #stageIndex = 0;
     #activeLayer = "R";
@@ -63,22 +67,23 @@ export class Game {
     #transitionLoaded = false;
     #customStage;
     #onStageEnded;
+    #startFromSky;
     #animationFrameId = null;
     #running = false;
-    #resizeHandler = () => {
-        this.#resize();
-
-        if (this.#player) {
-            this.#updateCamera(0, true);
-        }
-    };
+    #resizeHandler = () => this.#resize();
     #keyDownHandler = (event) => this.#keyDown(event);
 
-    constructor(canvas, customStage = null, onStageEnded = null) {
+    constructor(
+        canvas,
+        customStage = null,
+        onStageEnded = null,
+        startFromSky = false
+    ) {
 
         this.#canvas = canvas;
         this.#customStage = customStage;
         this.#onStageEnded = onStageEnded;
+        this.#startFromSky = startFromSky;
         this.#ctx = canvas.getContext("2d");
         this.#lightCanvas = document.createElement("canvas");
         this.#lightCtx = this.#lightCanvas.getContext("2d");
@@ -104,9 +109,10 @@ export class Game {
         this.#canvas.height = window.innerHeight;
         this.#lightCanvas.width = this.#canvas.width;
         this.#lightCanvas.height = this.#canvas.height;
+        this.#createFallingStars();
 
-        const visibleColumns = Math.min(this.#mapWidth, 16);
-        const visibleRows = Math.min(this.#mapHeight, 16);
+        const visibleColumns = Math.min(this.#mapWidth, CAMERA_VIEW_TILES);
+        const visibleRows = Math.min(this.#mapHeight, CAMERA_VIEW_TILES);
         const worldWidth =
             this.#mapWidth * this.#tileSize;
         const worldHeight =
@@ -126,34 +132,39 @@ export class Game {
 
         this.#offsetY =
             (this.#canvas.height - worldHeight * this.#scale) / 2;
+
+        if (this.#player) {
+            this.#updateCamera(0, true);
+        }
     }
 
     #updateCamera(deltaTime = 1 / 60, snap = false) {
-        const worldWidth = this.#mapWidth * this.#tileSize * this.#scale;
-        const worldHeight = this.#mapHeight * this.#tileSize * this.#scale;
         const playerCenterX =
             (this.#player.x + this.#player.w / 2) * this.#scale;
         const playerCenterY =
             (this.#player.y + this.#player.h / 2) * this.#scale;
 
-        const targetOffsetX = worldWidth <= this.#canvas.width
-            ? (this.#canvas.width - worldWidth) / 2
-            : Math.max(
-                this.#canvas.width - worldWidth,
-                Math.min(
-                    0,
-                    this.#canvas.width / 2 - playerCenterX
-                )
-            );
+        const targetOffsetX =
+            this.#canvas.width / 2 - playerCenterX;
+        const worldHeight =
+            this.#mapHeight * this.#tileSize * this.#scale;
+        const lowestOffsetY = worldHeight > this.#canvas.height
+            ? this.#canvas.height - worldHeight
+            : (this.#canvas.height - worldHeight) / 2;
+        const holdingForSkyDrop =
+            this.#cameraAnchorY !== null &&
+            this.#player.y <
+                this.#cameraAnchorY - this.#player.h - this.#tileSize * 2;
 
-        const targetOffsetY = worldHeight <= this.#canvas.height
-            ? (this.#canvas.height - worldHeight) / 2
+        if (this.#cameraAnchorY !== null && !holdingForSkyDrop) {
+            this.#cameraAnchorY = null;
+        }
+
+        const targetOffsetY = holdingForSkyDrop
+            ? this.#canvas.height / 2 - this.#cameraAnchorY * this.#scale
             : Math.max(
-                this.#canvas.height - worldHeight,
-                Math.min(
-                    0,
-                    this.#canvas.height / 2 - playerCenterY
-                )
+                lowestOffsetY,
+                this.#canvas.height / 2 - playerCenterY
             );
 
         const followProgress = snap
@@ -164,6 +175,7 @@ export class Game {
             (targetOffsetX - this.#offsetX) * followProgress;
         this.#offsetY +=
             (targetOffsetY - this.#offsetY) * followProgress;
+        this.#offsetY = Math.max(lowestOffsetY, this.#offsetY);
     }
 
     #isVisible(x, y, width, height) {
@@ -178,6 +190,57 @@ export class Game {
             screenX <= this.#canvas.width &&
             screenY <= this.#canvas.height
         );
+    }
+
+    #createFallingStars() {
+        const starCount = Math.min(
+            100,
+            Math.max(45, Math.floor(
+                this.#canvas.width * this.#canvas.height / 22000
+            ))
+        );
+
+        this.#fallingStars = Array.from(
+            { length: starCount },
+            () => ({
+                x: Math.random() * this.#canvas.width,
+                y: Math.random() * this.#canvas.height,
+                speed: 24 + Math.random() * 72,
+                size: 0.7 + Math.random() * 1.1,
+                trail: 3 + Math.random() * 9,
+                phase: Math.random() * Math.PI * 2
+            })
+        );
+    }
+
+    #drawFallingStars(deltaTime) {
+        const ctx = this.#ctx;
+        const frameDelta = Math.min(deltaTime, 0.1);
+
+        ctx.save();
+        ctx.lineCap = "round";
+
+        for (const star of this.#fallingStars) {
+            star.x += star.speed * 0.16 * frameDelta;
+            star.y += star.speed * frameDelta;
+
+            if (star.y - star.trail > this.#canvas.height) {
+                star.x = Math.random() * this.#canvas.width;
+                star.y = -star.trail;
+            }
+
+            const twinkle =
+                0.32 + (Math.sin(this.#elapsedTime * 2 + star.phase) + 1) * 0.08;
+
+            ctx.strokeStyle = `rgba(255, 255, 255, ${twinkle})`;
+            ctx.lineWidth = star.size;
+            ctx.beginPath();
+            ctx.moveTo(star.x, star.y);
+            ctx.lineTo(star.x - star.trail * 0.16, star.y - star.trail);
+            ctx.stroke();
+        }
+
+        ctx.restore();
     }
 
     #loadStage(index) {
@@ -213,8 +276,18 @@ export class Game {
         this.#player = new Player(
             this.#ctx,
             playerStart.x * this.#tileSize + (this.#tileSize - 32) / 2,
-            playerStart.y * this.#tileSize + (this.#tileSize - 32) / 2
+            playerStart.y * this.#tileSize + (this.#tileSize - 32) / 2,
+            () => this.#createJumpParticles()
         );
+
+        if (this.#startFromSky && index === 0) {
+            this.#cameraAnchorY =
+                playerStart.y * this.#tileSize + this.#tileSize / 2;
+            this.#player.y -= this.#tileSize * 18;
+            this.#spawnElapsed = this.#spawnDuration;
+            this.#startFromSky = false;
+        }
+
         this.#updateCamera(0, true);
 
         this.#spawnPoint = {
@@ -250,6 +323,32 @@ export class Game {
         );
 
         this.#particles.push(particle);
+    }
+
+    #createJumpParticles() {
+        const particleCount = 6;
+        const particlePoint = {
+            x: this.#player.x + this.#player.w / 2,
+            y: this.#player.y + this.#player.h
+        };
+
+        for (
+            let index = 0;
+            index < particleCount && this.#particles.length < 60;
+            index++
+        ) {
+            const particle = new Particle(
+                particlePoint.x + (Math.random() - 0.5) * this.#player.w,
+                particlePoint.y
+            );
+
+            particle.vx = (Math.random() - 0.5) * 140;
+            particle.vy = -30 - Math.random() * 100;
+            particle.maxLife = 0.25 + Math.random() * 0.2;
+            particle.life = particle.maxLife;
+            particle.size = 1.5 + Math.random() * 2;
+            this.#particles.push(particle);
+        }
     }
 
     #explodePlayer() {
@@ -554,7 +653,10 @@ export class Game {
          * 맵 아래로 떨어지면 스폰 위치로 복귀한다.
          */
 
-        if (this.#player.y > this.#mapHeight * this.#tileSize) {
+        if (
+            this.#player.y >
+            this.#mapHeight * this.#tileSize + VOID_DEATH_MARGIN
+        ) {
 
             this.#player.respawn();
 
@@ -702,11 +804,17 @@ export class Game {
     #nextStage() {
 
         if (this.#customStage) {
+            this.#transitioning = true;
+            this.#transitionTime = 0;
+            this.#transitionLoaded = true;
             this.#onStageEnded?.(true);
             return;
         }
 
         if (this.#stageIndex >= stageArray.length - 1) {
+            this.#transitioning = true;
+            this.#transitionTime = 0;
+            this.#transitionLoaded = true;
             this.#onStageEnded?.(true);
             return;
         }
@@ -842,7 +950,12 @@ export class Game {
         }
 
         for (const block of this.#blocks) {
-            if (!this.#isVisible(block.x, block.y, block.w, block.h)) {
+            if (!this.#isVisible(
+                block.x,
+                block.y,
+                block.w,
+                block.h + Block.MAX_VINE_LENGTH
+            )) {
                 continue;
             }
 
@@ -897,6 +1010,7 @@ export class Game {
         ctx.globalCompositeOperation = "source-over";
 
         this.#drawFlashlight();
+        this.#drawFallingStars(deltaTime);
 
         /*
          * Player 화면 좌표 계산

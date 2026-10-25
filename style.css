@@ -100,6 +100,25 @@ body {
     transition: opacity 0.25s ease;
 }
 
+html.starting-game #title-screen {
+    display: none;
+}
+
+html.starting-game::after {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: #000000;
+    content: "";
+    opacity: 1;
+    pointer-events: none;
+    transition: opacity 0.65s ease;
+}
+
+html.starting-game.fade-in::after {
+    opacity: 0;
+}
+
 
 /* =====================================
    LOGO

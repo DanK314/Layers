@@ -4,6 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="initial-scale=1.0">
+    <script>
+        if (new URLSearchParams(window.location.search).get("startGame") === "1") {
+            document.documentElement.classList.add("starting-game");
+        }
+    </script>
     <title>L A Y E R : S</title>
 
     <link rel="stylesheet" href="style.css">
