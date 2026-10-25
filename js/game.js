@@ -7,10 +7,9 @@ import { Spike } from "./spike.js";
 import { MiniBlackhole } from "./mini-blackhole.js";
 
 const PLAYER_FLASHLIGHT_SIZE = 600;
+const CAMERA_SMOOTHING = 8;
 
-const rSoundVolume = 0.1;
-const gSoundVolume = rSoundVolume * 0.5;
-const bSoundVolume = rSoundVolume * 0.3;
+const layerChangeSoundVolume = 0.1;
 
 export class Game {
 
@@ -35,11 +34,8 @@ export class Game {
     #layerFlashColor = "#FFFFFF";
     #player;
     #goal;
-    #layerSounds = {
-        R: new Audio("./sfx/R.wav"),
-        G: new Audio("./sfx/G.wav"),
-        B: new Audio("./sfx/B.wav")
-    };
+    #layerChangeSound = new Audio("./sfx/click.wav");
+    #explosionSound = new Audio("./sfx/explosion.wav");
 
     #spawnPoint;
 
@@ -66,15 +62,23 @@ export class Game {
     #transitioning = false;
     #transitionLoaded = false;
     #customStage;
+    #onStageEnded;
     #animationFrameId = null;
     #running = false;
-    #resizeHandler = () => this.#resize();
+    #resizeHandler = () => {
+        this.#resize();
+
+        if (this.#player) {
+            this.#updateCamera(0, true);
+        }
+    };
     #keyDownHandler = (event) => this.#keyDown(event);
 
-    constructor(canvas, customStage = null) {
+    constructor(canvas, customStage = null, onStageEnded = null) {
 
         this.#canvas = canvas;
         this.#customStage = customStage;
+        this.#onStageEnded = onStageEnded;
         this.#ctx = canvas.getContext("2d");
         this.#lightCanvas = document.createElement("canvas");
         this.#lightCtx = this.#lightCanvas.getContext("2d");
@@ -101,15 +105,20 @@ export class Game {
         this.#lightCanvas.width = this.#canvas.width;
         this.#lightCanvas.height = this.#canvas.height;
 
+        const visibleColumns = Math.min(this.#mapWidth, 16);
+        const visibleRows = Math.min(this.#mapHeight, 16);
         const worldWidth =
             this.#mapWidth * this.#tileSize;
-
         const worldHeight =
             this.#mapHeight * this.#tileSize;
+        const cameraViewWidth =
+            visibleColumns * this.#tileSize;
+        const cameraViewHeight =
+            visibleRows * this.#tileSize;
 
         this.#scale = Math.min(
-            this.#canvas.width / worldWidth,
-            this.#canvas.height / worldHeight
+            this.#canvas.width / cameraViewWidth,
+            this.#canvas.height / cameraViewHeight
         );
 
         this.#offsetX =
@@ -117,6 +126,58 @@ export class Game {
 
         this.#offsetY =
             (this.#canvas.height - worldHeight * this.#scale) / 2;
+    }
+
+    #updateCamera(deltaTime = 1 / 60, snap = false) {
+        const worldWidth = this.#mapWidth * this.#tileSize * this.#scale;
+        const worldHeight = this.#mapHeight * this.#tileSize * this.#scale;
+        const playerCenterX =
+            (this.#player.x + this.#player.w / 2) * this.#scale;
+        const playerCenterY =
+            (this.#player.y + this.#player.h / 2) * this.#scale;
+
+        const targetOffsetX = worldWidth <= this.#canvas.width
+            ? (this.#canvas.width - worldWidth) / 2
+            : Math.max(
+                this.#canvas.width - worldWidth,
+                Math.min(
+                    0,
+                    this.#canvas.width / 2 - playerCenterX
+                )
+            );
+
+        const targetOffsetY = worldHeight <= this.#canvas.height
+            ? (this.#canvas.height - worldHeight) / 2
+            : Math.max(
+                this.#canvas.height - worldHeight,
+                Math.min(
+                    0,
+                    this.#canvas.height / 2 - playerCenterY
+                )
+            );
+
+        const followProgress = snap
+            ? 1
+            : 1 - Math.exp(-CAMERA_SMOOTHING * Math.min(deltaTime, 0.1));
+
+        this.#offsetX +=
+            (targetOffsetX - this.#offsetX) * followProgress;
+        this.#offsetY +=
+            (targetOffsetY - this.#offsetY) * followProgress;
+    }
+
+    #isVisible(x, y, width, height) {
+        const screenX = this.#offsetX + x * this.#scale;
+        const screenY = this.#offsetY + y * this.#scale;
+        const screenRight = screenX + width * this.#scale;
+        const screenBottom = screenY + height * this.#scale;
+
+        return (
+            screenRight >= 0 &&
+            screenBottom >= 0 &&
+            screenX <= this.#canvas.width &&
+            screenY <= this.#canvas.height
+        );
     }
 
     #loadStage(index) {
@@ -154,6 +215,7 @@ export class Game {
             playerStart.x * this.#tileSize + (this.#tileSize - 32) / 2,
             playerStart.y * this.#tileSize + (this.#tileSize - 32) / 2
         );
+        this.#updateCamera(0, true);
 
         this.#spawnPoint = {
             x: playerStart.x * this.#tileSize + this.#tileSize / 2,
@@ -191,6 +253,9 @@ export class Game {
     }
 
     #explodePlayer() {
+
+        this.#explosionSound.currentTime = 0;
+        this.#explosionSound.play().catch(() => {});
 
         const explosionPoint = {
             x: this.#player.x + this.#player.w / 2,
@@ -379,17 +444,17 @@ export class Game {
         this.#layerFlashTime = this.#layerFlashDuration;
         this.#layerFlashElapsed = 0;
 
-        const layerSound = this.#layerSounds[this.#activeLayer];
-        layerSound.volume = {
-            R: rSoundVolume,
-            G: gSoundVolume,
-            B: bSoundVolume
-        }[this.#activeLayer];
-        layerSound.currentTime = 0;
-        layerSound.play().catch(() => {});
+        this.#layerChangeSound.volume = layerChangeSoundVolume;
+        this.#layerChangeSound.currentTime = 0;
+        this.#layerChangeSound.play().catch(() => {});
     }
 
     #keyDown(event) {
+
+        if (event.code === "Space") {
+            event.preventDefault();
+            return;
+        }
 
         if (event.code !== "Enter") {
             return;
@@ -415,6 +480,16 @@ export class Game {
         }
 
         this.#player.jump();
+    }
+
+    retry() {
+        this.#transitioning = false;
+        this.#transitionLoaded = false;
+        this.#transitionTime = 0;
+        this.#activeLayer = "R";
+        this.#loadStage(this.#stageIndex);
+        this.#resize();
+        this.#onStageEnded?.(false);
     }
 
     update(deltaTime) {
@@ -627,16 +702,19 @@ export class Game {
     #nextStage() {
 
         if (this.#customStage) {
+            this.#onStageEnded?.(true);
             return;
         }
 
         if (this.#stageIndex >= stageArray.length - 1) {
+            this.#onStageEnded?.(true);
             return;
         }
 
         this.#transitioning = true;
         this.#transitionTime = 0;
         this.#transitionLoaded = false;
+        this.#onStageEnded?.(true);
     }
 
     #updateTransition(deltaTime) {
@@ -649,6 +727,7 @@ export class Game {
         ) {
             if (this.#transitionTime >= this.#transitionDuration) {
                 this.#transitioning = false;
+                this.#onStageEnded?.(false);
             }
 
             return;
@@ -671,9 +750,11 @@ export class Game {
         this.#transitionLoaded = true;
     }
 
-    draw() {
+    draw(deltaTime = 1 / 60) {
 
         const ctx = this.#ctx;
+
+        this.#updateCamera(deltaTime);
 
         ctx.clearRect(
             0,
@@ -685,6 +766,9 @@ export class Game {
         ctx.globalCompositeOperation = "screen";
 
         for (const spike of this.#spikes) {
+            if (!this.#isVisible(spike.x, spike.y, spike.w, spike.h)) {
+                continue;
+            }
 
             const screenX =
                 this.#offsetX +
@@ -703,6 +787,15 @@ export class Game {
         }
 
         for (const miniBlackhole of this.#miniBlackholes) {
+            if (!this.#isVisible(
+                miniBlackhole.x,
+                miniBlackhole.y,
+                miniBlackhole.w,
+                miniBlackhole.h
+            )) {
+                continue;
+            }
+
             const screenX =
                 this.#offsetX + miniBlackhole.x * this.#scale;
             const screenY =
@@ -728,6 +821,9 @@ export class Game {
          */
 
         for (const particle of this.#particles) {
+            if (!this.#isVisible(particle.x, particle.y, 1, 1)) {
+                continue;
+            }
 
             const screenX =
                 this.#offsetX +
@@ -746,6 +842,9 @@ export class Game {
         }
 
         for (const block of this.#blocks) {
+            if (!this.#isVisible(block.x, block.y, block.w, block.h)) {
+                continue;
+            }
 
             const screenX =
                 Math.round(
@@ -1332,7 +1431,7 @@ export class Game {
                 physicsAccumulator -= physicsStep;
             }
 
-            this.draw();
+            this.draw(frameDeltaTime);
 
             this.#animationFrameId = requestAnimationFrame(loop);
         };
@@ -1347,6 +1446,11 @@ export class Game {
         if (this.#animationFrameId !== null) {
             cancelAnimationFrame(this.#animationFrameId);
             this.#animationFrameId = null;
+        }
+
+        for (const sound of [this.#layerChangeSound, this.#explosionSound]) {
+            sound.pause();
+            sound.currentTime = 0;
         }
 
         window.removeEventListener("resize", this.#resizeHandler);

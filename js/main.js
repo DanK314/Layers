@@ -16,6 +16,18 @@ const gameScreen =
 const canvas =
     document.getElementById("canvas");
 
+const homeButton =
+    document.getElementById("home-button");
+
+const retryButton =
+    document.getElementById("retry-button");
+
+const tutorialDialog =
+    document.getElementById("tutorial-dialog");
+
+const closeTutorialButton =
+    document.getElementById("close-tutorial");
+
 const userMapDialog =
     document.getElementById("user-map-dialog");
 
@@ -43,6 +55,7 @@ let gameStarted = false;
 let userMapLoading = false;
 let game = null;
 const backgroundMusic = new Audio("./bgm/Layers.wav");
+const bgVolume = 0.0;
 backgroundMusic.loop = true;
 
 
@@ -66,7 +79,7 @@ function playBackgroundMusic() {
                 1
             );
 
-            backgroundMusic.volume = progress * 0.2;
+            backgroundMusic.volume = Math.max(0, progress * bgVolume);
 
             if (progress < 1) {
                 requestAnimationFrame(fadeIn);
@@ -159,6 +172,11 @@ function selectMenu() {
 
         case "user-map":
             openUserMapDialog();
+            break;
+
+        case "how-to-play":
+            tutorialDialog.showModal();
+            closeTutorialButton.focus();
             break;
 
         case "map-maker":
@@ -254,12 +272,9 @@ function startGame(customStage = null) {
 
     gameStarted = true;
     playBackgroundMusic();
-
-
     titleScreen.classList.add("hidden");
-
     gameScreen.classList.add("active");
-
+    gameScreen.classList.remove("stage-ended");
 
     canvas.width =
         window.innerWidth;
@@ -267,11 +282,34 @@ function startGame(customStage = null) {
     canvas.height =
         window.innerHeight;
 
-
-    game = new Game(canvas, customStage);
+    game = new Game(
+        canvas,
+        customStage,
+        stageEnded => gameScreen.classList.toggle("stage-ended", stageEnded)
+    );
 
     game.run();
 }
+
+closeTutorialButton.addEventListener("click", () => tutorialDialog.close());
+
+homeButton.addEventListener("click", () => {
+    if (!gameStarted) return;
+
+    game?.stop();
+    backgroundMusic.pause();
+    backgroundMusic.currentTime = 0;
+    game = null;
+    gameStarted = false;
+    gameScreen.classList.remove("active");
+    gameScreen.classList.remove("stage-ended");
+    titleScreen.classList.remove("hidden");
+    updateMenu();
+});
+
+retryButton.addEventListener("click", () => {
+    game?.retry();
+});
 
 function parseUserMapId(value) {
     const input = value.trim();

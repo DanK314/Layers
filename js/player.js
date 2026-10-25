@@ -77,6 +77,8 @@ export class Player extends GameObject {
 
         window.removeEventListener("keydown", this.#keyDownHandler);
         window.removeEventListener("keyup", this.#keyUpHandler);
+        this.#jumpSound.pause();
+        this.#jumpSound.currentTime = 0;
     }
 
     #keyDown(event) {

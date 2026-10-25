@@ -728,6 +728,10 @@ html[data-color-textures="off"] .color-swatch {
 
 
 #load-code-dialog {
+    position: fixed;
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
     width: min(560px, calc(100% - 32px));
     max-height: calc(100% - 32px);
     padding: 0;
@@ -737,6 +741,10 @@ html[data-color-textures="off"] .color-swatch {
 }
 
 #clear-map-dialog {
+    position: fixed;
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
     width: min(420px, calc(100% - 32px));
     padding: 0;
     border: 1px solid #444444;

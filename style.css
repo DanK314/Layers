@@ -236,6 +236,10 @@ body {
 }
 
 #user-map-dialog {
+    position: fixed;
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
     width: min(420px, calc(100% - 32px));
     padding: 0;
     border: 1px solid #444;
@@ -321,6 +325,185 @@ body {
     background: #d5d5d5;
 }
 
+#tutorial-dialog {
+    position: fixed;
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    width: min(440px, calc(100% - 32px));
+    max-height: min(90vh, 720px);
+    overflow: auto;
+    padding: 0;
+    border: 1px solid #444;
+    background: #080808;
+    color: #fff;
+}
+
+#tutorial-dialog::backdrop {
+    background: rgb(0 0 0 / 85%);
+}
+
+.tutorial-content {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 28px;
+}
+
+.tutorial-content h2 {
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 3px;
+}
+
+.tutorial-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    font-family: Arial, sans-serif;
+}
+
+.tutorial-controls h3 {
+    margin-bottom: 3px;
+    color: #aaa;
+    font-family: "Orbitron", sans-serif;
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 2px;
+}
+
+.tutorial-controls p,
+.tutorial-colors > p,
+.tutorial-tip {
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.tutorial-colors {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-family: Arial, sans-serif;
+}
+
+.tutorial-colors h3 {
+    color: #aaa;
+    font-family: "Orbitron", sans-serif;
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 2px;
+}
+
+.tutorial-color-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px 12px;
+    list-style: none;
+}
+
+.tutorial-color-list li {
+    display: grid;
+    grid-template-columns: 14px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    font-size: 12px;
+}
+
+.tutorial-color-swatch {
+    width: 12px;
+    height: 12px;
+    border: 1px solid #777;
+}
+
+.tutorial-color-swatch.color-red {
+    background-color: #ff0000;
+}
+
+.tutorial-color-swatch.color-green {
+    background-color: #00ff00;
+}
+
+.tutorial-color-swatch.color-blue {
+    background-color: #0000ff;
+}
+
+.tutorial-color-swatch.color-yellow {
+    background-color: #ffff00;
+}
+
+.tutorial-color-swatch.color-magenta {
+    background-color: #ff00ff;
+}
+
+.tutorial-color-swatch.color-cyan {
+    background-color: #00ffff;
+}
+
+.tutorial-color-swatch.color-white {
+    background-color: #ffffff;
+}
+
+.tutorial-color-list kbd {
+    padding: 3px 5px;
+    border: 1px solid #444;
+    background: #151515;
+    color: #fff;
+    font: 10px monospace;
+    white-space: nowrap;
+}
+
+.tutorial-controls kbd {
+    display: inline-block;
+    min-width: 28px;
+    margin-right: 5px;
+    padding: 4px 6px;
+    border: 1px solid #444;
+    background: #151515;
+    color: #fff;
+    font: 11px monospace;
+    text-align: center;
+}
+
+.tutorial-tip {
+    color: #aaa;
+    font-family: Arial, sans-serif;
+}
+
+.tutorial-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.tutorial-actions button {
+    min-height: 40px;
+    padding: 0 16px;
+    border: 1px solid #fff;
+    background: #fff;
+    color: #000;
+    font: inherit;
+    font-size: 10px;
+    letter-spacing: 1px;
+    cursor: pointer;
+}
+
+.tutorial-actions button:hover,
+.tutorial-actions button:focus-visible {
+    border-color: #d5d5d5;
+    background: #d5d5d5;
+}
+
+@media (pointer: coarse) {
+    .tutorial-keyboard {
+        display: none;
+    }
+}
+
+@media (pointer: fine) {
+    .tutorial-touch {
+        display: none;
+    }
+}
 
 /* =====================================
    MENU EXIT
@@ -366,6 +549,46 @@ body {
 
 #game-screen.active {
     display: block;
+}
+
+#game-actions {
+    position: absolute;
+    top: 52px;
+    left: 24px;
+    z-index: 2;
+    display: flex;
+    gap: 8px;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease, visibility 0s linear;
+}
+
+#game-screen.stage-ended #game-actions {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+
+#game-actions button {
+    min-width: 68px;
+    min-height: 34px;
+    padding: 0 10px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    background: rgba(0, 0, 0, 0.55);
+    color: #FFFFFF;
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+#game-actions button:hover,
+#game-actions button:focus-visible {
+    border-color: #FFFFFF;
+    background: #FFFFFF;
+    color: #000000;
 }
 
 #mobile-controls {

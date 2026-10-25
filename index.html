@@ -27,6 +27,10 @@
                 USER MAP
             </div>
 
+            <div class="menu-item" data-menu="how-to-play">
+                HOW TO PLAY
+            </div>
+
             <div class="menu-item" data-menu="map-maker">
                 MAP MAKER
             </div>
@@ -48,6 +52,11 @@
     </div>
     <div id="game-screen">
         <canvas id="canvas"></canvas>
+
+        <div id="game-actions" aria-label="Game actions">
+            <button id="home-button" type="button">HOME</button>
+            <button id="retry-button" type="button">RETRY</button>
+        </div>
 
         <div id="mobile-controls" aria-label="Touch controls">
             <div class="mobile-controls-left">
@@ -73,6 +82,46 @@
                 <button id="load-user-map-button" type="submit">LOAD MAP</button>
             </div>
         </form>
+    </dialog>
+
+    <dialog id="tutorial-dialog" aria-labelledby="tutorial-title">
+        <div class="tutorial-content">
+            <h2 id="tutorial-title">HOW TO PLAY</h2>
+
+            <section class="tutorial-controls tutorial-keyboard">
+                <h3>KEYBOARD</h3>
+                <p><kbd>A</kbd> / <kbd>D</kbd> Move</p>
+                <p><kbd>W</kbd> Jump</p>
+                <p><kbd>ENTER</kbd> Change layer</p>
+            </section>
+
+            <section class="tutorial-controls tutorial-touch">
+                <h3>TOUCH</h3>
+                <p>Use the arrow buttons to move.</p>
+                <p>Tap <strong>JUMP</strong> to jump.</p>
+                <p>Tap <strong>LAYER</strong> to change layer.</p>
+            </section>
+
+            <section class="tutorial-colors" aria-labelledby="tutorial-colors-title">
+                <h3 id="tutorial-colors-title">BLOCK COLORS &amp; SOLIDITY</h3>
+                <p>Blocks are solid only while one of their listed layers is active. They appear dimmer on other layers.</p>
+                <ul class="tutorial-color-list">
+                    <li><span class="tutorial-color-swatch color-red"></span><span>Red</span><kbd>R</kbd></li>
+                    <li><span class="tutorial-color-swatch color-green"></span><span>Green</span><kbd>G</kbd></li>
+                    <li><span class="tutorial-color-swatch color-blue"></span><span>Blue</span><kbd>B</kbd></li>
+                    <li><span class="tutorial-color-swatch color-yellow"></span><span>Yellow</span><kbd>R + G</kbd></li>
+                    <li><span class="tutorial-color-swatch color-magenta"></span><span>Magenta</span><kbd>R + B</kbd></li>
+                    <li><span class="tutorial-color-swatch color-cyan"></span><span>Cyan</span><kbd>G + B</kbd></li>
+                    <li><span class="tutorial-color-swatch color-white"></span><span>White</span><kbd>R + G + B</kbd></li>
+                </ul>
+            </section>
+
+            <p class="tutorial-tip">Switch between red, green, and blue layers to find your path.</p>
+
+            <div class="tutorial-actions">
+                <button id="close-tutorial" type="button">CLOSE</button>
+            </div>
+        </div>
     </dialog>
 </body>
 

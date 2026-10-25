@@ -144,14 +144,16 @@ let objectMap = createObjectMap();
 let isMouseDown = false;
 let isPanning = false;
 let panModeEnabled = false;
-let panX = 0;
-let panY = 0;
 let lastPanPoint = null;
 let activePointerId = null;
 const activePointers = new Map();
 let pinchStart = null;
 let ignorePointersUntilReleased = false;
-let viewScale = 1;
+const camera = {
+    x: 0,
+    y: 0,
+    zoom: 1
+};
 let previewGame = null;
 
 function clamp(value, min, max) {
@@ -335,24 +337,27 @@ window.addEventListener(
  */
 
 function getCellSize() {
-    const baseCellSize =
-        Math.min(canvas.width, canvas.height) /
-        Math.max(MAP_WIDTH, MAP_HEIGHT);
+    const visibleColumns = Math.min(MAP_WIDTH, 16);
+    const visibleRows = Math.min(MAP_HEIGHT, 16);
+    const baseCellSize = Math.min(
+        canvas.width / visibleColumns,
+        canvas.height / visibleRows
+    );
 
-    return baseCellSize * viewScale;
+    return baseCellSize * camera.zoom;
 }
 
 function recenterMapView() {
     const cellSize = getCellSize();
-    const mapWidthPx = MAP_WIDTH * cellSize;
-    const mapHeightPx = MAP_HEIGHT * cellSize;
+    const cameraCenterX = Math.min(MAP_WIDTH, 16) / 2;
+    const cameraCenterY = Math.min(MAP_HEIGHT, 16) / 2;
 
-    panX = (canvas.width - mapWidthPx) / 2;
-    panY = (canvas.height - mapHeightPx) / 2;
+    camera.x = canvas.width / 2 - cameraCenterX * cellSize;
+    camera.y = canvas.height / 2 - cameraCenterY * cellSize;
 }
 
 function resetMapView() {
-    viewScale = 1;
+    camera.zoom = 1;
     recenterMapView();
     draw();
 }
@@ -378,18 +383,18 @@ function getPointerDistanceAndCenter() {
 
 function zoomAt(nextScale, pointerX, pointerY, anchor = null) {
     const clampedScale = clamp(nextScale, 0.5, 2.2);
-    if (clampedScale === viewScale) {
+    if (clampedScale === camera.zoom) {
         return;
     }
 
     const previousCellSize = getCellSize();
-    const worldX = anchor?.worldX ?? (pointerX - panX) / previousCellSize;
-    const worldY = anchor?.worldY ?? (pointerY - panY) / previousCellSize;
+    const worldX = anchor?.worldX ?? (pointerX - camera.x) / previousCellSize;
+    const worldY = anchor?.worldY ?? (pointerY - camera.y) / previousCellSize;
 
-    viewScale = clampedScale;
+    camera.zoom = clampedScale;
     const nextCellSize = getCellSize();
-    panX = pointerX - worldX * nextCellSize;
-    panY = pointerY - worldY * nextCellSize;
+    camera.x = pointerX - worldX * nextCellSize;
+    camera.y = pointerY - worldY * nextCellSize;
     draw();
 }
 
@@ -405,13 +410,13 @@ function getCellFromMouse(event) {
         (event.clientX - rect.left) /
         rect.width *
         canvas.width -
-        panX;
+        camera.x;
 
     const y =
         (event.clientY - rect.top) /
         rect.height *
         canvas.height -
-        panY;
+        camera.y;
 
     const cellSize = getCellSize();
 
@@ -447,8 +452,8 @@ function drawCell(x, y) {
 
     const cellSize = getCellSize();
 
-    const px = x * cellSize + panX;
-    const py = y * cellSize + panY;
+    const px = x * cellSize + camera.x;
+    const py = y * cellSize + camera.y;
 
     const color = colorMap[y][x];
     const object = objectMap[y][x];
@@ -672,18 +677,14 @@ function draw() {
         canvas.height
     );
 
-    for (
-        let y = 0;
-        y < MAP_HEIGHT;
-        y++
-    ) {
+    const cellSize = getCellSize();
+    const startX = clamp(Math.floor(-camera.x / cellSize), 0, MAP_WIDTH);
+    const startY = clamp(Math.floor(-camera.y / cellSize), 0, MAP_HEIGHT);
+    const endX = clamp(Math.ceil((canvas.width - camera.x) / cellSize), 0, MAP_WIDTH);
+    const endY = clamp(Math.ceil((canvas.height - camera.y) / cellSize), 0, MAP_HEIGHT);
 
-        for (
-            let x = 0;
-            x < MAP_WIDTH;
-            x++
-        ) {
-
+    for (let y = startY; y < endY; y++) {
+        for (let x = startX; x < endX; x++) {
             drawCell(x, y);
         }
     }
@@ -871,9 +872,9 @@ canvas.addEventListener(
 
                     pinchStart = {
                         distance,
-                        scale: viewScale,
-                        worldX: (centerX - panX) / cellSize,
-                        worldY: (centerY - panY) / cellSize
+                        scale: camera.zoom,
+                        worldX: (centerX - camera.x) / cellSize,
+                        worldY: (centerY - camera.y) / cellSize
                     };
                 }
                 ignorePointersUntilReleased = true;
@@ -949,8 +950,8 @@ canvas.addEventListener(
 
         if (isPanning) {
             const rect = canvas.getBoundingClientRect();
-            panX += (event.clientX - lastPanPoint.x) * canvas.width / rect.width;
-            panY += (event.clientY - lastPanPoint.y) * canvas.height / rect.height;
+            camera.x += (event.clientX - lastPanPoint.x) * canvas.width / rect.width;
+            camera.y += (event.clientY - lastPanPoint.y) * canvas.height / rect.height;
             lastPanPoint = {
                 x: event.clientX,
                 y: event.clientY
@@ -984,8 +985,8 @@ canvas.addEventListener("wheel", event => {
 
     event.preventDefault();
 
-    const previousScale = viewScale;
-    const nextScale = clamp(viewScale + (event.deltaY < 0 ? 0.12 : -0.12), 0.5, 2.2);
+    const previousScale = camera.zoom;
+    const nextScale = clamp(camera.zoom + (event.deltaY < 0 ? 0.12 : -0.12), 0.5, 2.2);
 
     if (nextScale === previousScale) {
         return;
@@ -1410,6 +1411,7 @@ loadButton.addEventListener(
             mapWidthInput.value = String(MAP_WIDTH);
             mapHeightInput.value = String(MAP_HEIGHT);
 
+            recenterMapView();
             draw();
 
         } catch (error) {
