@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Online Dual · LAYER:S</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="online.css">
+  <script type="module" src="js/online.js"></script>
+</head>
+<body>
+  <main id="lobby">
+    <a href="index.html">← HOME</a>
+    <h1>Online Dual</h1>
+    <p>Two players. One user map. First to the goal wins.</p>
+    <form id="room-form">
+      <label for="nickname">Nickname</label>
+      <input id="nickname" maxlength="20" required autocomplete="nickname" placeholder="Your nickname">
+      <label for="room">Room number</label>
+      <input id="room" inputmode="numeric" pattern="[0-9]{6,12}" maxlength="12" required placeholder="6–12 digits">
+      <label for="map">User map number <small>(required to create a room)</small></label>
+      <input id="map" inputmode="numeric" pattern="[1-9][0-9]*" placeholder="Map number">
+      <div class="actions">
+        <button type="submit" value="host">CREATE ROOM</button>
+        <button type="submit" value="guest">JOIN ROOM</button>
+      </div>
+    </form>
+    <p>Share your room number with a friend. The host selects the map.</p>
+    <p>A / D: Move · W: Jump · Enter: Change layer</p>
+    <p id="lobby-status" role="status" aria-live="polite"></p>
+  </main>
+  <section id="waiting" hidden aria-labelledby="waiting-title">
+    <div class="waiting-card">
+      <p class="waiting-eyebrow">ONLINE DUAL</p>
+      <h1 id="waiting-title">Connecting</h1>
+      <dl class="waiting-details">
+        <div><dt>Room</dt><dd id="waiting-room"></dd></div>
+        <div><dt>Map</dt><dd id="waiting-map"></dd></div>
+        <div><dt>Players</dt><dd id="waiting-players"></dd></div>
+      </dl>
+      <aside id="notice" role="status" aria-live="polite"><p id="status">Connecting to Cloudflare…</p></aside>
+      <button id="reset" type="button">CANCEL</button>
+    </div>
+  </section>
+  <section id="arena" hidden aria-label="Online race">
+    <canvas id="canvas"></canvas>
+    <div id="countdown" hidden role="status" aria-live="assertive" aria-label="Race countdown"></div>
+    <div id="race-bar"><span id="players" role="status" aria-live="polite"></span><button id="leave" type="button">LEAVE ROOM</button></div>
+    <div id="mobile-controls" aria-label="Touch controls">
+      <div class="mobile-controls-left">
+        <button class="mobile-control" data-control="left" aria-label="Move left">◀</button>
+        <button class="mobile-control" data-control="right" aria-label="Move right">▶</button>
+      </div>
+      <div class="mobile-controls-right">
+        <button class="mobile-control mobile-control-layer" data-control="layer">LAYER</button>
+        <button class="mobile-control mobile-control-jump" data-control="jump">JUMP</button>
+      </div>
+    </div>
+  </section>
+  <section id="result-screen" hidden aria-labelledby="result-title">
+    <div class="result-content">
+      <p class="result-eyebrow">ONLINE DUAL · MATCH COMPLETE</p>
+      <h1 id="result-title" tabindex="-1">VICTORY</h1>
+      <p id="result-description"></p>
+      <dl class="result-details">
+        <div><dt>Winner</dt><dd id="result-winner"></dd></div>
+        <div><dt>Match</dt><dd id="result-match"></dd></div>
+        <div><dt>Map</dt><dd id="result-map"></dd></div>
+        <div><dt>Room</dt><dd id="result-room"></dd></div>
+      </dl>
+      <div class="result-actions">
+        <button id="result-lobby" type="button">BACK TO LOBBY</button>
+        <a href="index.html">HOME</a>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

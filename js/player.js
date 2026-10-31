@@ -6,6 +6,8 @@ const jumpSoundVolume = 0.1;
 
 export class Player extends GameObject {
 
+    inputEnabled = true;
+
     #xStretch = 0.18;
     #yStretch = 0.18;
 
@@ -84,6 +86,7 @@ export class Player extends GameObject {
     }
 
     #keyDown(event) {
+        if (!this.inputEnabled) return;
 
         switch (event.code) {
 
@@ -147,6 +150,7 @@ export class Player extends GameObject {
     }
 
     #jump() {
+        if (!this.inputEnabled) return;
 
         if (!this.#isGrounded) {
             return;
@@ -362,13 +366,13 @@ export class Player extends GameObject {
          * 플레이어 색상
          */
 
-        ctx.fillStyle = "#FFFFFF";
+        ctx.fillStyle = this.onlineColor || "#FFFFFF";
 
         /*
          * 네온 글로우
          */
 
-        ctx.shadowColor = "#FFFFFF";
+        ctx.shadowColor = this.onlineColor || "#FFFFFF";
         ctx.shadowBlur = 22;
 
         /*

@@ -35,12 +35,12 @@ export async function uploadMap(mapData, title = "Untitled") {
     });
 }
 
-export async function loadMap(mapId) {
+export async function loadMap(mapId, options = {}) {
     const id = String(mapId);
 
     if (!/^[1-9]\d*$/.test(id)) {
         throw new Error("Enter a valid map number.");
     }
 
-    return requestJSON(`/api/maps/${id}`);
+    return requestJSON(`/api/maps/${id}`, options);
 }

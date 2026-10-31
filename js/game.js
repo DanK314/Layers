@@ -15,6 +15,10 @@ const layerChangeSoundVolume = 0.1;
 
 export class Game {
 
+    #opponent = null;
+    #online = false;
+    #raceFrozen = false;
+    #countdownPaused = false;
     #canvas;
     #ctx;
     #lightCanvas;
@@ -77,9 +81,11 @@ export class Game {
         canvas,
         customStage = null,
         onStageEnded = null,
-        startFromSky = false
+        startFromSky = false,
+        online = false
     ) {
 
+        this.#online = online;
         this.#canvas = canvas;
         this.#customStage = customStage;
         this.#onStageEnded = onStageEnded;
@@ -519,7 +525,32 @@ export class Game {
         }
     }
 
+    getOnlineState() {
+        return { x: this.#player.x, y: this.#player.y, layer: this.#activeLayer };
+    }
+
+    setOpponent(state) {
+        if (state && Number.isFinite(state.x) && Number.isFinite(state.y) &&
+            Math.abs(state.x) < 1000000 && Math.abs(state.y) < 1000000 &&
+            ["R", "G", "B"].includes(state.layer)) this.#opponent = state;
+    }
+
+    setCountdownPaused(paused) {
+        this.#countdownPaused = Boolean(paused);
+        this.#player.inputEnabled = !paused;
+        this.#player.setHorizontalInput("left", false);
+        this.#player.setHorizontalInput("right", false);
+        // Show the complete character during the map preview, then start immediately.
+        if (this.#online) this.#spawnElapsed = this.#spawnDuration;
+    }
+
+    freezeRace() {
+        this.#raceFrozen = true;
+        this.#player?.dispose();
+    }
+
     cycleLayer() {
+        if (this.#raceFrozen || this.#countdownPaused) return;
         if (this.#transitioning) {
             return;
         }
@@ -564,6 +595,7 @@ export class Game {
     }
 
     setInput(direction, active) {
+        if (this.#raceFrozen || this.#countdownPaused) return;
         if (!this.#player) {
             return;
         }
@@ -574,6 +606,7 @@ export class Game {
     }
 
     jump() {
+        if (this.#raceFrozen || this.#countdownPaused) return;
         if (!this.#player) {
             return;
         }
@@ -592,6 +625,7 @@ export class Game {
     }
 
     update(deltaTime) {
+        if (this.#raceFrozen || this.#countdownPaused) return;
 
         this.#explosionLightTime = Math.max(
             0,
@@ -802,6 +836,11 @@ export class Game {
     }
 
     #nextStage() {
+        if (this.#online) {
+            this.freezeRace();
+            this.#onStageEnded?.(true);
+            return;
+        }
 
         if (this.#customStage) {
             this.#transitioning = true;
@@ -1073,6 +1112,7 @@ export class Game {
                 : "#FFFFFF"
         );
 
+        this.#player.onlineColor = null;
         this.#player.draw(
             playerDrawX,
             playerDrawY,
@@ -1104,6 +1144,19 @@ export class Game {
                 goalScreenY,
                 this.#scale
             );
+        }
+
+        if (this.#online && this.#opponent) {
+            const other = this.#opponent;
+            ctx.save();
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = "#FFFFFF";
+            ctx.shadowColor = ctx.fillStyle;
+            ctx.shadowBlur = 22;
+            ctx.fillRect(this.#offsetX + other.x * this.#scale,
+                this.#offsetY + other.y * this.#scale,
+                this.#player.w * this.#scale, this.#player.h * this.#scale);
+            ctx.restore();
         }
 
         this.#drawLayerIndicator();
@@ -1470,7 +1523,7 @@ export class Game {
 
         ctx.save();
 
-        ctx.font = "16px Orbitron, sans-serif";
+        ctx.font = this.#canvas.width < 600 ? "12px Orbitron, sans-serif" : "16px Orbitron, sans-serif";
         ctx.textAlign = "right";
         ctx.textBaseline = "top";
 
@@ -1495,8 +1548,8 @@ export class Game {
 
         ctx.fillText(
             timerText,
-            padding + 220,
-            padding
+            this.#canvas.width < 600 ? padding : padding + 220,
+            this.#canvas.width < 600 ? padding + 24 : padding
         );
 
         ctx.restore();
@@ -1527,7 +1580,7 @@ export class Game {
 
             this.#frameTime = frameDeltaTime * 1000;
             this.#fps = frameDeltaTime > 0 ? 1 / frameDeltaTime : 0;
-            this.#elapsedTime += frameDeltaTime;
+            if (!this.#countdownPaused && !this.#raceFrozen) this.#elapsedTime += frameDeltaTime;
 
             /*
              * 실제 경과 시간을 고정 물리 스텝으로 누적한다.

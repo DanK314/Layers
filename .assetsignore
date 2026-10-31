@@ -1,0 +1,15 @@
+.git
+.git/**
+.wrangler
+.wrangler/**
+node_modules
+node_modules/**
+server
+server/**
+tests
+tests/**
+package*.json
+wrangler.jsonc
+*.md
+.env*
+.dev.vars*
