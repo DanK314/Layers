@@ -55,7 +55,7 @@ function createColorTexture(color, shape) {
         colorChannels[1] * 0.587 +
         colorChannels[2] * 0.114;
     const textureColor = luminance > 140 ? "#000000" : "#FFFFFF";
-    const spacing = TEXTURE_SIZE / 4;
+    const spacing = TEXTURE_SIZE / 2;
 
     textureCtx.beginPath();
     if (shape === "diamond") {
@@ -76,10 +76,10 @@ function createColorTexture(color, shape) {
         textureCtx.rect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
     }
     textureCtx.clip();
-    textureCtx.globalAlpha = 0.65;
+    textureCtx.globalAlpha = 0.55;
     textureCtx.strokeStyle = textureColor;
     textureCtx.fillStyle = textureColor;
-    textureCtx.lineWidth = TEXTURE_SIZE * 0.035;
+    textureCtx.lineWidth = TEXTURE_SIZE * 0.055;
 
     if (pattern === "horizontal" || pattern === "vertical") {
         textureCtx.beginPath();
@@ -96,7 +96,7 @@ function createColorTexture(color, shape) {
 
         textureCtx.stroke();
     } else if (pattern === "dots") {
-        const radius = TEXTURE_SIZE * 0.045;
+        const radius = TEXTURE_SIZE * 0.09;
 
         for (let row = 0; row * spacing < TEXTURE_SIZE; row++) {
             for (let column = 0; column * spacing < TEXTURE_SIZE; column++) {

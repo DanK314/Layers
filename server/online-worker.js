@@ -30,7 +30,7 @@ export class OnlineRoom {
         if (sockets.length) error = 'That room number is already in use.';
         else if (!/^[1-9]\d{0,14}$/.test(map || '')) error = 'Enter a valid user map number.';
         else {
-          state = { map, names: { host: name }, ready: {}, startAt: null, result: null };
+          state = { map, names: { host: name }, ready: {}, startAt: null, result: null, round: 0, rematch: {} };
           await this.ctx.storage.put('room', state);
         }
       } else {
@@ -64,7 +64,23 @@ export class OnlineRoom {
       try { m = JSON.parse(raw); } catch { return; }
       if (!m || typeof m !== 'object') return;
       const state = await this.ctx.storage.get('room');
-      if (!state || state.result) return;
+      if (!state || (m.round || 0) !== (state.round || 0)) return;
+      if (m.type === 'rematch-request' && state.result) {
+        if (!this.ctx.getWebSockets('host').length || !this.ctx.getWebSockets('guest').length) return;
+        state.rematch ||= {};
+        state.rematch[meta.role] = true;
+        this.broadcast({ type: 'rematch-request', round: state.round || 0 });
+        if (state.rematch.host && state.rematch.guest) {
+          state.round = (state.round || 0) + 1;
+          state.result = null;
+          state.rematch = {};
+          state.startAt = Date.now() + 3000;
+          await this.ctx.storage.put('room', state);
+          this.broadcast({ type: 'rematch-start', round: state.round, startAt: state.startAt, serverNow: Date.now() });
+        } else await this.ctx.storage.put('room', state);
+        return;
+      }
+      if (state.result) return;
       if (['offer', 'answer', 'candidate'].includes(m.type)) {
         if ((m.type === 'offer' && meta.role !== 'host') || (m.type === 'answer' && meta.role !== 'guest')) return;
         for (const other of this.ctx.getWebSockets(meta.role === 'host' ? 'guest' : 'host')) this.send(other, m);
@@ -80,7 +96,7 @@ export class OnlineRoom {
         }
         await this.ctx.storage.put('room', state);
       } else if (m.type === 'finish' && state.startAt && Date.now() >= state.startAt) {
-        state.result = { type: 'result', winner: meta.role, name: state.names[meta.role] };
+        state.result = { type: 'result', round: state.round || 0, winner: meta.role, name: state.names[meta.role] };
         await this.ctx.storage.put('room', state);
         this.broadcast(state.result);
       }

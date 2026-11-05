@@ -331,8 +331,8 @@ button {
     background-color: #FF0000;
     background-image: repeating-linear-gradient(
         0deg,
-        transparent 0 3px,
-        rgba(0, 0, 0, 0.7) 3px 4px
+        transparent 0 6px,
+        rgba(0, 0, 0, 0.55) 6px 8px
     );
 }
 
@@ -340,23 +340,23 @@ button {
     background-color: #00FF00;
     background-image: repeating-linear-gradient(
         90deg,
-        transparent 0 3px,
-        rgba(0, 0, 0, 0.7) 3px 4px
+        transparent 0 6px,
+        rgba(0, 0, 0, 0.55) 6px 8px
     );
 }
 
 .color-blue {
     background-color: #0000FF;
-    background-image: radial-gradient(#FFFFFF 1px, transparent 1.5px);
-    background-size: 4px 4px;
+    background-image: radial-gradient(#FFFFFF 2px, transparent 2.5px);
+    background-size: 8px 8px;
 }
 
 .color-yellow {
     background-color: #FFFF00;
     background-image: repeating-linear-gradient(
         45deg,
-        transparent 0 3px,
-        rgba(0, 0, 0, 0.7) 3px 4px
+        transparent 0 6px,
+        rgba(0, 0, 0, 0.55) 6px 8px
     );
 }
 
@@ -365,13 +365,13 @@ button {
     background-image:
         repeating-linear-gradient(
             45deg,
-            transparent 0 3px,
-            rgba(0, 0, 0, 0.7) 3px 4px
+            transparent 0 6px,
+            rgba(0, 0, 0, 0.55) 6px 8px
         ),
         repeating-linear-gradient(
             -45deg,
-            transparent 0 3px,
-            rgba(0, 0, 0, 0.7) 3px 4px
+            transparent 0 6px,
+            rgba(0, 0, 0, 0.55) 6px 8px
         );
 }
 
@@ -379,17 +379,17 @@ button {
     background-color: #00FFFF;
     background-image: repeating-linear-gradient(
         -45deg,
-        transparent 0 3px,
-        rgba(0, 0, 0, 0.7) 3px 4px
+        transparent 0 6px,
+        rgba(0, 0, 0, 0.55) 6px 8px
     );
 }
 
 .color-white {
     background-color: #FFFFFF;
     background-image:
-        linear-gradient(rgba(0, 0, 0, 0.7) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 0, 0, 0.7) 1px, transparent 1px);
-    background-size: 4px 4px;
+        linear-gradient(rgba(0, 0, 0, 0.55) 2px, transparent 2px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.55) 2px, transparent 2px);
+    background-size: 8px 8px;
 }
 
 html[data-color-textures="off"] .color-swatch {
@@ -589,6 +589,8 @@ html[data-color-textures="off"] .color-swatch {
     position: absolute;
     right: 0;
     bottom: calc(100% + 12px);
+    width: 280px;
+    max-width: calc(100vw - 32px);
     max-height: calc(100vh - 100px);
     overflow-y: auto;
     display: flex;
@@ -603,6 +605,10 @@ html[data-color-textures="off"] .color-swatch {
     transform: translateY(8px);
     transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
     z-index: 10;
+}
+
+#editor-actions-menu > button {
+    flex-shrink: 0;
 }
 
 #editor-actions-menu.open {
@@ -661,8 +667,10 @@ html[data-color-textures="off"] .color-swatch {
 #upload-map-panel {
     position: relative;
     display: flex;
+    flex-direction: column;
     flex-shrink: 0;
-    align-items: center;
+    align-items: stretch;
+    min-width: 0;
     gap: 8px;
 }
 
@@ -679,21 +687,23 @@ html[data-color-textures="off"] .color-swatch {
     display: none;
 }
 
+#verify-map-status,
 #upload-map-status {
-    position: absolute;
-    right: 0;
-    bottom: calc(100% + 6px);
-    width: max-content;
-    max-width: min(320px, 60vw);
+    min-width: 0;
     margin: 0;
-    color: #AAAAAA;
-    font-size: 10px;
-    line-height: 1.4;
-    text-align: right;
+    color: #CCCCCC;
+    font: 12px/1.6 sans-serif;
+    overflow-wrap: anywhere;
+    text-align: left;
+}
+
+#upload-map-status:empty {
+    display: none;
 }
 
 #share-map-link {
-    width: 150px;
+    width: 100%;
+    min-width: 0;
     height: 36px;
     padding: 0 8px;
     border: 1px solid #333333;
@@ -798,7 +808,7 @@ html[data-color-textures="off"] .color-swatch {
 
 #load-code-error {
     margin: 0;
-    color: #FF7777;
+    color: #949494;
     font-size: 12px;
 }
 
@@ -952,3 +962,20 @@ html[data-color-textures="off"] .color-swatch {
     margin-left: 12px;
     opacity: 0.55;
 }
+#map-history-controls { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 8px; z-index: 2; }
+#map-history-controls button { min-height: 44px; min-width: 76px; padding: 10px 12px; border: 1px solid #616161; border-radius: 5px; background: #111e; color: #fff; font: 12px sans-serif; touch-action: manipulation; cursor: pointer; }
+#map-history-controls button:disabled { opacity: .4; cursor: default; }
+#map-history-controls button:focus-visible { outline: 2px solid #d1d1d1; outline-offset: 2px; }
+
+#upload-map-button:disabled { opacity: .4; cursor: default; }
+#preview-touch-controls { display: none; }
+@media (any-pointer: coarse) {
+    #preview-touch-controls { position: absolute; bottom: max(16px, env(safe-area-inset-bottom)); left: 12px; right: 12px; display: flex; gap: 12px; }
+    #preview-touch-controls button { min-width: 0; flex: 1; height: 60px; border: 1px solid #999; background: #111b; color: #fff; border-radius: 12px; font: 13px sans-serif; touch-action: none; user-select: none; }
+    #preview-touch-controls button:nth-child(2) { margin-right: 8vw; }
+}
+
+#map-tool-controls { position: absolute; bottom: 68px; left: 12px; display: flex; gap: 8px; z-index: 2; }
+#map-tool-controls button { min-width: 76px; min-height: 44px; padding: 10px; font: 12px sans-serif; color: #fff; background: #111e; border: 1px solid #777; border-radius: 5px; touch-action: manipulation; cursor: pointer; }
+#map-tool-controls button[aria-pressed="true"] { color: #000; background: #fff; border-color: #fff; }
+#map-tool-controls button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }

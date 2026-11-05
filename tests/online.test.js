@@ -104,3 +104,29 @@ test('shared user map parser validates dimensions and player start', () => {
   assert.throws(() => parseUserMapData({ mapData: { ...mapData, width: 129 } }));
   assert.throws(() => parseUserMapData({ mapData: { ...mapData, object: [['.', '.', '$'], ['#', '#', '#']] } }));
 });
+
+test('rematch requires both votes, resets result and rejects previous-round finishes', async () => {
+  const s = setup(); await s.join('host'); await s.join('guest');
+  const [host, guest] = s.sockets;
+  await s.message(host, { type: 'ready', hash: 'a'.repeat(64) });
+  await s.message(guest, { type: 'ready', hash: 'a'.repeat(64) });
+  s.data.get('room').startAt = Date.now() - 10;
+  await s.message(host, { type: 'finish' });
+  await s.message(host, { type: 'rematch-request', round: 0 });
+  await s.message(host, { type: 'rematch-request', round: 0 });
+  assert.equal(s.data.get('room').round, 0);
+  assert.equal(s.data.get('room').result.winner, 'host');
+  await s.message(guest, { type: 'rematch-request', round: 0 });
+  assert.equal(s.data.get('room').round, 1);
+  assert.equal(s.data.get('room').result, null);
+  assert.equal(host.sent.at(-1).type, 'rematch-start');
+  assert.deepEqual(host.sent.at(-1), guest.sent.at(-1));
+  await s.message(guest, { type: 'finish', round: 1 });
+  assert.equal(s.data.get('room').result, null);
+  s.data.get('room').startAt = Date.now() - 10;
+  await s.message(host, { type: 'finish', round: 0 });
+  assert.equal(s.data.get('room').result, null);
+  await s.message(guest, { type: 'finish', round: 1 });
+  assert.equal(s.data.get('room').result.winner, 'guest');
+  assert.equal(s.data.get('room').result.round, 1);
+});

@@ -26,7 +26,7 @@
       </div>
     </form>
     <p>Share your room number with a friend. The host selects the map.</p>
-    <p>A / D: Move · W: Jump · Enter: Change layer</p>
+    <p>Keyboard controls follow KEY BINDINGS in the main menu.</p>
     <p id="lobby-status" role="status" aria-live="polite"></p>
   </main>
   <section id="waiting" hidden aria-labelledby="waiting-title">
@@ -39,6 +39,12 @@
         <div><dt>Players</dt><dd id="waiting-players"></dd></div>
       </dl>
       <aside id="notice" role="status" aria-live="polite"><p id="status">Connecting to Cloudflare…</p></aside>
+      <div id="invite" hidden>
+        <label for="invite-link">Invite a friend</label>
+        <input id="invite-link" type="url" readonly aria-describedby="invite-status">
+        <button id="copy-invite" type="button">COPY INVITE LINK</button>
+        <p id="invite-status" role="status" aria-live="polite"></p>
+      </div>
       <button id="reset" type="button">CANCEL</button>
     </div>
   </section>
@@ -68,7 +74,9 @@
         <div><dt>Map</dt><dd id="result-map"></dd></div>
         <div><dt>Room</dt><dd id="result-room"></dd></div>
       </dl>
+      <p id="rematch-status" role="status" aria-live="polite"></p>
       <div class="result-actions">
+        <button id="rematch" type="button">REMATCH</button>
         <button id="result-lobby" type="button">BACK TO LOBBY</button>
         <a href="index.html">HOME</a>
       </div>

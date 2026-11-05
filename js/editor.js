@@ -1,3 +1,7 @@
+import { fillRectangle, rectangleBounds } from "./editor-rectangle.js";
+import { createMapVerification } from "./map-verification.js";
+import { createEditorHistory, historyShortcut } from "./editor-history.js";
+import { createEditorAutosave } from "./editor-autosave.js";
 import { Game } from "./game.js";
 import { MapParser } from "./map.js";
 import {
@@ -38,10 +42,22 @@ const submitLoadCodeButton = document.querySelector("#submit-load-code-button");
 const clearMapDialog = document.querySelector("#clear-map-dialog");
 const cancelClearMapButton = document.querySelector("#cancel-clear-map-button");
 const confirmClearMapButton = document.querySelector("#confirm-clear-map-button");
+const verification = createMapVerification();
+let uploading = false;
+const verifyButton = document.createElement('button');
+verifyButton.id = 'verify-map-button';
+verifyButton.type = 'button';
+verifyButton.className = 'object-button';
+verifyButton.textContent = 'VERIFY MAP';
+const verifyStatus = document.createElement('p');
+verifyStatus.id = 'verify-map-status';
+verifyStatus.setAttribute('role', 'status');
+verifyStatus.textContent = 'Clear the map in a test play before uploading.';
 const uploadButton = document.createElement("button");
 uploadButton.id = "upload-map-button";
 uploadButton.textContent = "UPLOAD MAP";
 uploadButton.className = "object-button";
+uploadButton.disabled = true;
 
 const uploadStatus = document.createElement("p");
 uploadStatus.id = "upload-map-status";
@@ -65,6 +81,8 @@ const uploadPanel = document.createElement("section");
 uploadPanel.id = "upload-map-panel";
 
 uploadPanel.append(
+    verifyButton,
+    verifyStatus,
     uploadButton,
     uploadStatus,
     shareLink,
@@ -72,6 +90,13 @@ uploadPanel.append(
 );
 
 copyButton.insertAdjacentElement("afterend", uploadPanel);
+
+function mapChanged() {
+    verification.invalidate();
+    uploadButton.disabled = true;
+    verifyStatus.textContent = 'Map changed. Clear it again to verify before uploading.';
+    autosave.changed();
+}
 
 function toggleEditorMenu(forceOpen) {
     const nextOpen = typeof forceOpen === "boolean"
@@ -136,6 +161,17 @@ let selectedColor = "R";
 let colorMap = createColorMap();
 let objectMap = createObjectMap();
 
+const autosave = createEditorAutosave({
+    getMap: () => ({ width: MAP_WIDTH, height: MAP_HEIGHT, color: colorMap, object: objectMap }),
+    onStatus: message => { document.querySelector('#autosave-status').textContent = message; }
+});
+window.addEventListener('beforeunload', event => autosave.beforeUnload(event));
+window.addEventListener('pagehide', () => autosave.flush());
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) autosave.flush();
+});
+
+
 
 /*
  * 마우스 상태
@@ -155,6 +191,66 @@ const camera = {
     zoom: 1
 };
 let previewGame = null;
+let editorTool = 'brush';
+let rectangleStart = null;
+let rectangleEnd = null;
+const toolButtons = document.querySelectorAll('[data-editor-tool]');
+for (const button of toolButtons) button.addEventListener('click', () => {
+    finishPointerInteraction();
+    editorTool = button.dataset.editorTool;
+    for (const other of toolButtons) other.setAttribute('aria-pressed', String(other === button));
+});
+function drawRectangleSelection() {
+    if (!rectangleStart || !rectangleEnd) return;
+    const b = rectangleBounds(rectangleStart, rectangleEnd, MAP_WIDTH, MAP_HEIGHT);
+    const size = getCellSize();
+    ctx.save();
+    ctx.fillStyle = '#ffffff22'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    const x = camera.x + b.left * size, y = camera.y + b.top * size;
+    const w = (b.right - b.left + 1) * size, h = (b.bottom - b.top + 1) * size;
+    ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h);
+    ctx.restore();
+}
+let editHistory = null;
+const undoButton = document.querySelector('#undo-button');
+const redoButton = document.querySelector('#redo-button');
+function currentMap() {
+    return { width: MAP_WIDTH, height: MAP_HEIGHT, color: colorMap, object: objectMap };
+}
+function updateHistoryButtons() {
+    undoButton.disabled = !editHistory?.canUndo;
+    redoButton.disabled = !editHistory?.canRedo;
+}
+function recordHistory() {
+    editHistory?.record(currentMap());
+    updateHistoryButtons();
+}
+function travelHistory(direction) {
+    if (previewGame || document.querySelector('dialog[open]')) return;
+    finishPointerInteraction();
+    recordHistory();
+    const map = editHistory[direction]();
+    if (!map) return;
+    const resized = MAP_WIDTH !== map.width || MAP_HEIGHT !== map.height;
+    MAP_WIDTH = map.width;
+    MAP_HEIGHT = map.height;
+    colorMap = map.color;
+    objectMap = map.object;
+    mapWidthInput.value = String(MAP_WIDTH);
+    mapHeightInput.value = String(MAP_HEIGHT);
+    if (resized) recenterMapView();
+    draw();
+    mapChanged();
+    updateHistoryButtons();
+}
+undoButton.addEventListener('click', () => travelHistory('undo'));
+redoButton.addEventListener('click', () => travelHistory('redo'));
+window.addEventListener('keydown', event => {
+    const direction = historyShortcut(event);
+    if (!direction || previewGame || document.querySelector('dialog[open]')) return;
+    event.preventDefault();
+    travelHistory(direction);
+});
 
 function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
@@ -259,6 +355,7 @@ function createObjectMap(width = MAP_WIDTH, height = MAP_HEIGHT) {
 
 
 function resizeMaps(width, height) {
+    finishPointerInteraction();
 
     const nextWidth = getSafeMapSize(
         width,
@@ -302,6 +399,8 @@ function resizeMaps(width, height) {
 
     recenterMapView();
     draw();
+    mapChanged();
+    recordHistory();
 }
 
 
@@ -688,6 +787,7 @@ function draw() {
             drawCell(x, y);
         }
     }
+    drawRectangleSelection();
 }
 
 
@@ -851,6 +951,7 @@ function paintCell(x, y) {
 
 
     draw();
+    mapChanged();
 }
 
 
@@ -877,6 +978,9 @@ canvas.addEventListener(
                         worldY: (centerY - camera.y) / cellSize
                     };
                 }
+                rectangleStart = rectangleEnd = null;
+                draw();
+                recordHistory();
                 ignorePointersUntilReleased = true;
                 isMouseDown = false;
                 isPanning = false;
@@ -918,6 +1022,11 @@ canvas.addEventListener(
             return;
         }
 
+        if (editorTool === 'rectangle') {
+            rectangleStart = rectangleEnd = cell;
+            draw();
+            return;
+        }
         paintCell(
             cell.x,
             cell.y
@@ -971,6 +1080,11 @@ canvas.addEventListener(
             return;
         }
 
+        if (editorTool === 'rectangle') {
+            if (rectangleStart) rectangleEnd = cell;
+            draw();
+            return;
+        }
         paintCell(
             cell.x,
             cell.y
@@ -1013,6 +1127,12 @@ function finishPointerInteraction(event) {
         return;
     }
 
+    if (rectangleStart && rectangleEnd && event?.type === 'pointerup') {
+        if (fillRectangle(currentMap(), rectangleStart, rectangleEnd, selectedObject, selectedColor)) mapChanged();
+    }
+    rectangleStart = rectangleEnd = null;
+    draw();
+    recordHistory();
     isMouseDown = false;
     isPanning = false;
     lastPanPoint = null;
@@ -1026,6 +1146,7 @@ function finishPointerInteraction(event) {
 
 window.addEventListener("pointerup", finishPointerInteraction);
 window.addEventListener("pointercancel", finishPointerInteraction);
+window.addEventListener("blur", () => finishPointerInteraction());
 canvas.addEventListener("lostpointercapture", finishPointerInteraction);
 
 
@@ -1059,8 +1180,11 @@ cancelClearMapButton.addEventListener("click", () => {
 });
 
 confirmClearMapButton.addEventListener("click", () => {
+    finishPointerInteraction();
     colorMap = createColorMap();
     objectMap = createObjectMap();
+    mapChanged();
+    recordHistory();
 
     draw();
     clearMapDialog.close();
@@ -1387,6 +1511,7 @@ loadButton.addEventListener(
 
             const mapHeight = colorRows.length;
 
+            finishPointerInteraction();
             MAP_WIDTH = mapWidth;
             MAP_HEIGHT = mapHeight;
 
@@ -1413,6 +1538,8 @@ loadButton.addEventListener(
 
             recenterMapView();
             draw();
+            mapChanged();
+    recordHistory();
 
         } catch (error) {
 
@@ -1456,6 +1583,7 @@ submitLoadCodeButton.addEventListener(
 
             const data = parseMapCode(loadCodeInput.value);
 
+            finishPointerInteraction();
             MAP_WIDTH = data.width;
             MAP_HEIGHT = data.height;
             colorMap = data.color;
@@ -1466,6 +1594,8 @@ submitLoadCodeButton.addEventListener(
 
             recenterMapView();
             draw();
+            mapChanged();
+    recordHistory();
             loadCodeDialog.close();
 
         } catch (error) {
@@ -1481,6 +1611,11 @@ const GAME_URL = new URL("./index.html", window.location.href);
 uploadButton.addEventListener("click", async () => {
     if (uploadButton.disabled) return;
     if (!validateMap()) return;
+    if (!verification.isVerified(currentMap())) {
+        verifyStatus.textContent = 'Select VERIFY MAP and reach the goal before uploading.';
+        uploadButton.disabled = true;
+        return;
+    }
 
     const titleInput = prompt("Enter a map name.", "Untitled");
 
@@ -1496,6 +1631,7 @@ uploadButton.addEventListener("click", async () => {
         object: objectMap.map(row => [...row])
     };
 
+    uploading = true;
     uploadButton.disabled = true;
     uploadStatus.textContent = "Uploading map...";
     copyShareButton.hidden = true;
@@ -1529,7 +1665,8 @@ uploadButton.addEventListener("click", async () => {
                 `Upload failed: ${error.message}`;
         }
     } finally {
-        uploadButton.disabled = false;
+        uploading = false;
+        uploadButton.disabled = !verification.isVerified(currentMap());
     }
 });
 
@@ -1556,6 +1693,14 @@ copyShareButton.addEventListener("click", async () => {
  * 초기화
  */
 
+const restoredDraft = autosave.restore();
+if (restoredDraft) {
+    MAP_WIDTH = restoredDraft.width;
+    MAP_HEIGHT = restoredDraft.height;
+    colorMap = restoredDraft.color;
+    objectMap = restoredDraft.object;
+}
+
 mapWidthInput.value = String(MAP_WIDTH);
 mapHeightInput.value = String(MAP_HEIGHT);
 
@@ -1574,6 +1719,8 @@ centerViewButton.addEventListener("click", () => {
     resetMapView();
 });
 
+editHistory = createEditorHistory(currentMap());
+updateHistoryButtons();
 resizeCanvas();
 recenterMapView();
 selectObject("#");
@@ -1582,6 +1729,8 @@ updateTextureToggle();
 draw();
 
 function startPreview() {
+    if (previewGame) return;
+    finishPointerInteraction();
 
     if (!validateMap()) {
         return;
@@ -1598,7 +1747,23 @@ function startPreview() {
     previewCanvas.height = window.innerHeight;
     gamePreview.classList.add("active");
     gamePreview.setAttribute("aria-hidden", "false");
-    previewGame = new Game(previewCanvas, stage);
+    if (!objectMap.some(row => row.includes('$'))) {
+        alert('A GOAL($) is required to verify the map.');
+        gamePreview.classList.remove('active');
+        gamePreview.setAttribute('aria-hidden', 'true');
+        return;
+    }
+    const attempt = verification.begin(currentMap());
+    verifyStatus.textContent = 'Verification in progress. Reach the goal to enable upload.';
+    let attemptGame;
+    attemptGame = new Game(previewCanvas, stage, cleared => {
+        if (!cleared || previewGame !== attemptGame) return;
+        if (!verification.complete(attempt, currentMap())) return;
+        verifyStatus.textContent = 'VERIFIED · Map cleared. Ready to upload.';
+        uploadButton.disabled = uploading;
+        queueMicrotask(() => { if (previewGame === attemptGame) stopPreview(); });
+    });
+    previewGame = attemptGame;
     previewGame.run();
 }
 
@@ -1608,12 +1773,15 @@ function stopPreview() {
         return;
     }
 
+    releasePreviewControls();
     previewGame.stop();
     previewGame = null;
+    if (!verification.isVerified(currentMap())) verifyStatus.textContent = 'Verification incomplete. Reach the goal to enable upload.';
     gamePreview.classList.remove("active");
     gamePreview.setAttribute("aria-hidden", "true");
 }
 
+verifyButton.addEventListener('click', startPreview);
 testButton.addEventListener("click", startPreview);
 returnEditorButton.addEventListener("click", stopPreview);
 
@@ -1624,3 +1792,30 @@ window.addEventListener("keydown", event => {
         stopPreview();
     }
 });
+const previewPointers = new Map();
+function releasePreviewControls() {
+    previewGame?.setInput('left', false);
+    previewGame?.setInput('right', false);
+    for (const pointers of previewPointers.values()) pointers.clear();
+}
+for (const button of document.querySelectorAll('[data-preview-control]')) {
+    const control = button.dataset.previewControl;
+    const pointers = new Set();
+    previewPointers.set(control, pointers);
+    button.addEventListener('pointerdown', event => {
+        event.preventDefault();
+        if (!previewGame) return;
+        pointers.add(event.pointerId);
+        button.setPointerCapture(event.pointerId);
+        if (control === 'jump') previewGame.jump();
+        else if (control === 'layer') previewGame.cycleLayer();
+        else previewGame.setInput(control, true);
+    });
+    const release = event => {
+        pointers.delete(event.pointerId);
+        if (!pointers.size && (control === 'left' || control === 'right')) previewGame?.setInput(control, false);
+    };
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(type, release);
+}
+window.addEventListener('blur', releasePreviewControls);
+document.addEventListener('visibilitychange', () => { if (document.hidden) releasePreviewControls(); });

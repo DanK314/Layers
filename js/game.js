@@ -1,3 +1,5 @@
+import { keyBindings } from "./keybindings.js";
+import { bestTimes } from "./best-times.js";
 import { Block } from "./block.js";
 import { stageArray } from "./map.js";
 import { Player } from "./player.js";
@@ -9,6 +11,7 @@ import { MiniBlackhole } from "./mini-blackhole.js";
 const PLAYER_FLASHLIGHT_SIZE = 600;
 const CAMERA_SMOOTHING = 8;
 const CAMERA_VIEW_TILES = 12;
+const MOBILE_CAMERA_VIEW_TILES = 14;
 const VOID_DEATH_MARGIN = 15 * 64;
 
 const layerChangeSoundVolume = 0.1;
@@ -56,6 +59,8 @@ export class Game {
     #fallingStars = [];
 
     #stageIndex = 0;
+    #onStageCleared;
+    #reportedClears = new Set();
     #activeLayer = "R";
     #layerColors = {
         R: "#FF0000",
@@ -65,6 +70,10 @@ export class Game {
     #fps = 0;
     #frameTime = 0;
     #elapsedTime = 0;
+    #stageTime = 0;
+    #stageFinished = false;
+    #bestTime = null;
+    #recordKey = null;
     #transitionTime = 0;
     #transitionDuration = 2;
     #transitioning = false;
@@ -82,10 +91,17 @@ export class Game {
         customStage = null,
         onStageEnded = null,
         startFromSky = false,
-        online = false
+        online = false,
+        campaign = {}
     ) {
 
         this.#online = online;
+        this.#recordKey = campaign.recordKey || null;
+        if (!customStage && !online) {
+            const index = campaign.stageIndex;
+            this.#stageIndex = Number.isInteger(index) && index >= 0 && index < stageArray.length ? index : 0;
+            this.#onStageCleared = campaign.onStageCleared;
+        }
         this.#canvas = canvas;
         this.#customStage = customStage;
         this.#onStageEnded = onStageEnded;
@@ -117,8 +133,12 @@ export class Game {
         this.#lightCanvas.height = this.#canvas.height;
         this.#createFallingStars();
 
-        const visibleColumns = Math.min(this.#mapWidth, CAMERA_VIEW_TILES);
-        const visibleRows = Math.min(this.#mapHeight, CAMERA_VIEW_TILES);
+        // Match the touch controls: fit two extra tiles on mobile screens.
+        const viewTiles = window.matchMedia?.('(any-pointer: coarse)').matches
+            ? MOBILE_CAMERA_VIEW_TILES
+            : CAMERA_VIEW_TILES;
+        const visibleColumns = Math.min(this.#mapWidth, viewTiles);
+        const visibleRows = Math.min(this.#mapHeight, viewTiles);
         const worldWidth =
             this.#mapWidth * this.#tileSize;
         const worldHeight =
@@ -252,6 +272,10 @@ export class Game {
     #loadStage(index) {
 
         const stage = this.#customStage ?? stageArray[index];
+        this.#stageTime = 0;
+        this.#stageFinished = false;
+        if (!this.#customStage && !this.#online) this.#recordKey = `stage:${index + 1}`;
+        this.#bestTime = this.#recordKey ? bestTimes.get(this.#recordKey) : null;
 
         this.#mapWidth = stage.width ?? 16;
         this.#mapHeight = stage.height ?? 16;
@@ -580,18 +604,9 @@ export class Game {
     }
 
     #keyDown(event) {
-
-        if (event.code === "Space") {
-            event.preventDefault();
-            return;
-        }
-
-        if (event.code !== "Enter") {
-            return;
-        }
-
+        if (keyBindings.action(event) !== 'layer') return;
         event.preventDefault();
-        this.cycleLayer();
+        if (!event.repeat) this.cycleLayer();
     }
 
     setInput(direction, active) {
@@ -673,6 +688,7 @@ export class Game {
             return;
         }
 
+        if (!this.#stageFinished) this.#stageTime += deltaTime;
         this.#player.setGrounded(false);
 
         for (const miniBlackhole of this.#miniBlackholes) {
@@ -836,6 +852,10 @@ export class Game {
     }
 
     #nextStage() {
+        if (!this.#stageFinished) {
+            this.#stageFinished = true;
+            if (this.#recordKey) this.#bestTime = bestTimes.record(this.#recordKey, this.#stageTime);
+        }
         if (this.#online) {
             this.freezeRace();
             this.#onStageEnded?.(true);
@@ -848,6 +868,11 @@ export class Game {
             this.#transitionLoaded = true;
             this.#onStageEnded?.(true);
             return;
+        }
+
+        if (!this.#reportedClears.has(this.#stageIndex)) {
+            this.#reportedClears.add(this.#stageIndex);
+            this.#onStageCleared?.(this.#stageIndex);
         }
 
         if (this.#stageIndex >= stageArray.length - 1) {
@@ -1538,7 +1563,7 @@ export class Game {
         ctx.textAlign = "left";
 
         const fpsText = `FPS ${this.#fps.toFixed(0)}  ${this.#frameTime.toFixed(1)} ms`;
-        const timerText = `TIME ${this.#elapsedTime.toFixed(1)} s`;
+        const timerText = `TIME ${this.#stageTime.toFixed(2)} s`;
 
         ctx.fillText(
             fpsText,
@@ -1552,6 +1577,11 @@ export class Game {
             this.#canvas.width < 600 ? padding + 24 : padding
         );
 
+        if (this.#recordKey) {
+            ctx.fillText(`BEST ${this.#bestTime === null ? '—' : this.#bestTime.toFixed(2) + ' s'}`,
+                this.#canvas.width < 600 ? padding : padding + 220,
+                this.#canvas.width < 600 ? padding + 44 : padding + 24);
+        }
         ctx.restore();
     }
 

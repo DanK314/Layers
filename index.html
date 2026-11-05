@@ -28,21 +28,23 @@
                 PLAY
             </div>
 
+            <div class="menu-item" data-menu="how-to-play">
+                HOW TO PLAY
+            </div>
+
             <div class="menu-item" data-menu="online">
-                Online Dual
+                ONLINE DUAL
             </div>
 
             <div class="menu-item" data-menu="user-map">
                 USER MAP
             </div>
 
-            <div class="menu-item" data-menu="how-to-play">
-                HOW TO PLAY
-            </div>
-
             <div class="menu-item" data-menu="map-maker">
                 MAP MAKER
             </div>
+
+            <div class="menu-item" data-menu="keybindings">KEY BINDINGS</div>
 
             <div class="menu-item" data-menu="color-textures">
                 TEXTURES: ON
@@ -51,7 +53,7 @@
         </div>
 
         <div id="menu-helper">
-            <span>↑ ↓</span>
+            <span>↑ ↓ / WASD</span>
             <span>MOVE</span>
 
             <span>ENTER</span>
@@ -80,10 +82,62 @@
         </div>
     </div>
 
+    <dialog id="keybinding-dialog" aria-labelledby="keybinding-title">
+        <section class="keybinding-content">
+            <h2 id="keybinding-title">KEY BINDINGS</h2>
+            <p>Choose an action, then press its new key. Applies to all game modes.</p>
+            <div data-binding-list></div>
+            <p data-binding-status role="status" aria-live="polite"></p>
+            <button data-binding-reset type="button">RESTORE DEFAULTS</button>
+            <button data-binding-close type="button">BACK</button>
+        </section>
+    </dialog>
+    <dialog id="stage-dialog" aria-labelledby="stage-title">
+        <div class="stage-select-content">
+            <div class="stage-select-header">
+                <h2 id="stage-title">STAGES</h2>
+                <button id="close-stages" type="button">BACK</button>
+            </div>
+            <p id="stage-summary"></p>
+            <p style="font: 12px/1.5 sans-serif; color: #c5c5c5;">ARROWS / WASD: MOVE · ENTER: SELECT</p>
+            <button id="continue-button" type="button">START · STAGE 1</button>
+            <div id="stage-list" role="group" aria-label="Select an unlocked stage"></div>
+            <p id="progress-status" role="status" aria-live="polite">Progress is saved on this browser.</p>
+        </div>
+    </dialog>
     <dialog id="user-map-dialog" aria-labelledby="user-map-title">
         <form id="user-map-form">
             <h2 id="user-map-title">USER MAP</h2>
-            <label for="user-map-input">Enter a map number or paste a share link:</label>
+            <section id="user-map-browser" aria-labelledby="recent-maps-title">
+                <div class="map-list-header">
+                    <h3 id="recent-maps-title">RECENT MAPS</h3>
+                    <button data-map-refresh type="button">REFRESH</button>
+                </div>
+                <p data-map-status role="status" aria-live="polite"></p>
+                <section data-map-preview hidden aria-labelledby="map-preview-title">
+                    <div class="map-preview-heading">
+                        <h3 id="map-preview-title" data-preview-title></h3>
+                        <button data-preview-back type="button">BACK TO LIST</button>
+                    </div>
+                    <p data-preview-meta class="map-preview-meta"></p>
+                    <div class="map-preview-layers" role="group" aria-label="Preview layer">
+                        <button data-preview-layer="ALL" type="button" aria-pressed="true">ALL</button>
+                        <button data-preview-layer="R" type="button" aria-pressed="false">RED</button>
+                        <button data-preview-layer="G" type="button" aria-pressed="false">GREEN</button>
+                        <button data-preview-layer="B" type="button" aria-pressed="false">BLUE</button>
+                    </div>
+                    <canvas data-preview-canvas width="960" height="600" role="img" aria-label="Map preview" hidden></canvas>
+                    <p data-preview-status role="status" aria-live="polite"></p>
+                    <button data-preview-play type="button" disabled>PLAY MAP</button>
+                </section>
+                <ul data-map-list aria-label="Recently created maps"></ul>
+                <nav class="map-pagination" aria-label="Map pages">
+                    <button data-map-previous type="button" disabled>PREVIOUS</button>
+                    <span data-map-page aria-live="polite">PAGE 1</span>
+                    <button data-map-next type="button" disabled>NEXT</button>
+                </nav>
+            </section>
+            <label for="user-map-input">Or enter a map number or paste a share link:</label>
             <input id="user-map-input" type="text" autocomplete="off" required>
             <p id="user-map-error" role="alert" hidden></p>
             <div class="user-map-actions">
@@ -99,9 +153,9 @@
 
             <section class="tutorial-controls tutorial-keyboard">
                 <h3>KEYBOARD</h3>
-                <p><kbd>A</kbd> / <kbd>D</kbd> Move</p>
-                <p><kbd>W</kbd> Jump</p>
-                <p><kbd>ENTER</kbd> Change layer</p>
+                <p><kbd data-key-hint="left">A</kbd> / <kbd data-key-hint="right">D</kbd> Move</p>
+                <p><kbd data-key-hint="jump">W</kbd> Jump</p>
+                <p><kbd data-key-hint="layer">ENTER</kbd> Change layer</p>
             </section>
 
             <section class="tutorial-controls tutorial-touch">

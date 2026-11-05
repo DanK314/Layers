@@ -156,6 +156,14 @@
 
                 <canvas id="map-canvas"></canvas>
 
+                <div id="map-tool-controls" role="group" aria-label="Drawing tool">
+                    <button type="button" data-editor-tool="brush" aria-pressed="true">BRUSH</button>
+                    <button type="button" data-editor-tool="rectangle" aria-pressed="false">RECT FILL</button>
+                </div>
+                <div id="map-history-controls" role="group" aria-label="Edit history">
+                    <button id="undo-button" type="button" title="Undo (Ctrl+Z)" aria-label="Undo last edit" disabled>↶ UNDO</button>
+                    <button id="redo-button" type="button" title="Redo (Ctrl+Shift+Z)" aria-label="Redo last edit" disabled>↷ REDO</button>
+                </div>
                 <div id="map-view-controls" aria-label="Map view controls">
                     <button id="pan-mode-button" type="button" aria-pressed="false">
                         PAN: OFF
@@ -227,6 +235,7 @@
             </div>
 
         </footer>
+        <p id="autosave-status" role="status" aria-live="polite" style="flex-shrink: 0; font: 12px/1.5 sans-serif; color: #cacaca; margin: 0; padding: 4px 16px;">Autosave ready · this browser only.</p>
 
     </main>
 
@@ -256,6 +265,12 @@
 
     <section id="game-preview" aria-label="Map preview" aria-hidden="true">
         <canvas id="preview-canvas"></canvas>
+        <div id="preview-touch-controls" aria-label="Test play touch controls">
+            <button type="button" data-preview-control="left" aria-label="Move left">◀</button>
+            <button type="button" data-preview-control="right" aria-label="Move right">▶</button>
+            <button type="button" data-preview-control="layer">LAYER</button>
+            <button type="button" data-preview-control="jump">JUMP</button>
+        </div>
         <button id="return-editor-button" type="button">BACK TO EDITOR <span>ESC</span></button>
     </section>
 

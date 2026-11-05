@@ -1,3 +1,8 @@
+import { setupKeyBindingDialog } from "./keybinding-dialog.js";
+import { bestTimes } from "./best-times.js";
+import { bindStageKeyboard } from "./stage-keyboard.js";
+import { stageArray } from "./map.js";
+import { createStageProgress } from "./stage-progress.js";
 import { Game } from "./game.js";
 import {
     areColorTexturesEnabled,
@@ -5,6 +10,7 @@ import {
 } from "./texture.js";
 import { parseUserMapData } from "./user-map.js";
 import { loadMap } from "./map-api.js";
+import { createMapBrowser } from "./map-browser.js";
 
 
 const titleScreen =
@@ -47,7 +53,53 @@ const menuItems = [
     ...document.querySelectorAll(".menu-item")
 ];
 
+const openKeyBindings = setupKeyBindingDialog(document.getElementById('keybinding-dialog'));
+
 const mobileControls = document.getElementById("mobile-controls");
+
+const stageDialog = document.getElementById('stage-dialog');
+const stageList = document.getElementById('stage-list');
+const continueButton = document.getElementById('continue-button');
+const progressStatus = document.getElementById('progress-status');
+const progress = createStageProgress(stageArray.length, {
+    onStatus: text => { progressStatus.textContent = text; }
+});
+function renderStages() {
+    document.getElementById('stage-summary').textContent = `${progress.cleared} / ${stageArray.length} STAGES CLEARED`;
+    continueButton.textContent = progress.cleared === stageArray.length
+        ? 'ALL CLEAR · REPLAY FINAL STAGE'
+        : `${progress.cleared ? 'CONTINUE' : 'START'} · STAGE ${progress.resumeIndex + 1}`;
+    stageList.replaceChildren();
+    stageArray.forEach((stage, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        const unlocked = progress.isUnlocked(index);
+        button.disabled = !unlocked;
+        button.textContent = `STAGE ${index + 1} · ${index < progress.cleared ? 'CLEARED' : unlocked ? 'OPEN' : 'LOCKED'}`;
+        const best = bestTimes.get(`stage:${index + 1}`);
+        button.textContent += ` · BEST ${best === null ? '—' : best.toFixed(2) + ' s'}`;
+        button.className = index < progress.cleared ? 'stage-cleared' : '';
+        button.addEventListener('click', () => playStage(index));
+        stageList.append(button);
+    });
+}
+function onCampaignStageCleared(index) {
+    progress.complete(index);
+    if (index === stageArray.length - 1) {
+        window.location.href = './ending.html';
+    }
+}
+
+function playStage(index) {
+    if (gameStarted || !progress.isUnlocked(index)) return;
+    stageDialog.close();
+    if (index === 0 && !progress.introSeen) {
+        window.location.href = './cutscene.html';
+    } else startGame(null, false, index);
+}
+continueButton.addEventListener('click', () => playStage(progress.resumeIndex));
+document.getElementById('close-stages').addEventListener('click', () => stageDialog.close());
+bindStageKeyboard(stageDialog, stageList, continueButton, document.getElementById('close-stages'));
 
 let selectedIndex = 0;
 
@@ -167,7 +219,9 @@ function selectMenu() {
     switch (menu) {
 
         case "play":
-            window.location.href = "./cutscene.html";
+            renderStages();
+            stageDialog.showModal();
+            continueButton.focus();
             break;
 
         case "online":
@@ -185,6 +239,10 @@ function selectMenu() {
 
         case "map-maker":
             openMapMaker();
+            break;
+
+        case "keybindings":
+            openKeyBindings();
             break;
 
         case "color-textures":
@@ -270,7 +328,7 @@ function setupMobileControls() {
    START GAME
 ===================================== */
 
-function startGame(customStage = null, startFromSky = false) {
+function startGame(customStage = null, startFromSky = false, stageIndex = progress.resumeIndex, recordKey = null) {
 
     if (gameStarted) return;
 
@@ -290,7 +348,10 @@ function startGame(customStage = null, startFromSky = false) {
         canvas,
         customStage,
         stageEnded => gameScreen.classList.toggle("stage-ended", stageEnded),
-        startFromSky
+        startFromSky,
+        false,
+        { recordKey, stageIndex: progress.isUnlocked(stageIndex) ? stageIndex : 0,
+          onStageCleared: onCampaignStageCleared }
     );
 
     game.run();
@@ -312,6 +373,10 @@ closeTutorialButton.addEventListener("click", () => tutorialDialog.close());
 homeButton.addEventListener("click", () => {
     if (!gameStarted) return;
 
+    const homeUrl = new URL(window.location.href);
+    homeUrl.searchParams.delete('startGame');
+    window.history.replaceState(window.history.state, '', homeUrl.href);
+    document.documentElement.classList.remove('starting-game', 'fade-in');
     game?.stop();
     backgroundMusic.pause();
     backgroundMusic.currentTime = 0;
@@ -352,13 +417,21 @@ function parseUserMapId(value) {
 }
 
 
+const mapBrowser = createMapBrowser(
+    document.getElementById("user-map-browser"),
+    id => startUserMap(id, true),
+    { getBestTime: id => bestTimes.get(`user:${id}`) }
+);
+userMapDialog.addEventListener("close", () => mapBrowser.cancel());
+
 function openUserMapDialog() {
     if (gameStarted || userMapLoading) return;
 
     userMapError.hidden = true;
     userMapInput.value = "";
     userMapDialog.showModal();
-    userMapInput.focus();
+    void mapBrowser.refresh();
+    document.querySelector("[data-map-refresh]").focus();
 }
 
 async function startUserMap(mapIdInput, showDialogErrors = false) {
@@ -391,7 +464,7 @@ async function startUserMap(mapIdInput, showDialogErrors = false) {
             userMapDialog.close();
         }
 
-        startGame(stage);
+        startGame(stage, false, 0, `user:${mapId}`);
     } catch (error) {
         console.error("User map loading failed:", error);
 
@@ -452,11 +525,13 @@ window.addEventListener(
     (event) => {
 
         // 게임/맵메이커 선택 후에는 메뉴 입력 무시
-        if (gameStarted) return;
+        if (gameStarted || document.querySelector("dialog[open]") || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
 
 
         switch (event.code) {
 
+            case "KeyW":
+            case "KeyA":
             case "ArrowUp":
 
                 event.preventDefault();
@@ -466,6 +541,8 @@ window.addEventListener(
                 break;
 
 
+            case "KeyS":
+            case "KeyD":
             case "ArrowDown":
 
                 event.preventDefault();
@@ -475,11 +552,12 @@ window.addEventListener(
                 break;
 
 
+            case "NumpadEnter":
             case "Enter":
 
                 event.preventDefault();
 
-                selectMenu();
+                if (!event.repeat) selectMenu();
 
                 break;
 
@@ -511,5 +589,6 @@ const startAfterCutscene =
 if (sharedMapId) {
     void startUserMap(sharedMapId);
 } else if (startAfterCutscene) {
-    startGame(null, true);
+    progress.markIntroSeen();
+    startGame(null, progress.resumeIndex === 0);
 }

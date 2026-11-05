@@ -10,6 +10,37 @@ function status(message) {
     $('status').textContent = message;
     if (!session) $('lobby-status').textContent = message;
 }
+const invitedRoom = new URLSearchParams(window.location?.search || '').get('room');
+const inviteJoin = /^\d{6,12}$/.test(invitedRoom || '');
+if (inviteJoin) {
+    $('room').value = invitedRoom;
+    status('You are invited! Enter your nickname, then select JOIN ROOM.');
+    const join = $('room-form').querySelectorAll('button')[1];
+    const host = $('room-form').querySelectorAll('button')[0];
+    if (join && host) host.before(join);
+}
+function showInvite(s) {
+    const url = new URL(window.location.href);
+    url.search = '';
+    url.hash = '';
+    url.searchParams.set('room', s.room);
+    $('invite-link').value = url.href;
+    $('invite-status').textContent = 'Send this link to your friend, then keep this page open.';
+    $('invite').hidden = false;
+}
+$('copy-invite').addEventListener('click', async () => {
+    const s = session;
+    if (!s || s.closed) return;
+    try {
+        await navigator.clipboard.writeText($('invite-link').value);
+        if (session === s && !s.closed) $('invite-status').textContent = 'Invite link copied! Send it to your friend.';
+    } catch {
+        if (session !== s || s.closed) return;
+        $('invite-link').focus();
+        $('invite-link').select();
+        $('invite-status').textContent = 'Could not copy automatically. Copy the selected link manually.';
+    }
+});
 function connectionFailure(s, error) {
     end(s, `Could not start the race: ${error.message}`);
 }
@@ -31,11 +62,12 @@ function releaseMovement() {
     for (const button of document.querySelectorAll('[data-control]')) button.classList.remove('pressed');
 }
 function send(s, message) {
-    if (s.ws?.readyState === WebSocket.OPEN) s.ws.send(JSON.stringify(message));
+    if (s.ws?.readyState === WebSocket.OPEN) s.ws.send(JSON.stringify({ ...message, round: s.round || 0 }));
 }
 function clean(s) {
     if (!s || s.closed) return;
     s.closed = true;
+    $('invite').hidden = true;
     $('countdown').hidden = true;
     raceControls(false);
     clearTimeout(s.timeout);
@@ -49,7 +81,13 @@ function clean(s) {
     s.ws?.close();
 }
 function end(s, message) {
-    if (session !== s || s.closed || s.result) return;
+    if (session !== s || s.closed) return;
+    if (s.result) {
+        clean(s);
+        $('rematch').disabled = true;
+        $('rematch-status').textContent = 'Opponent disconnected. Return to the lobby to play again.';
+        return;
+    }
     clean(s);
     status(message);
     if (s.starting) $('players').textContent = message;
@@ -90,7 +128,7 @@ function attachChannel(s, channel) {
         if (s.closed || typeof event.data !== 'string' || event.data.length > 2048) return;
         try {
             const m = JSON.parse(event.data);
-            if (m?.type === 'state') s.game?.setOpponent(m);
+            if (m?.type === 'state' && (m.round || 0) === (s.round || 0) && !s.result) s.game?.setOpponent(m);
             else if (s.relay) relayControl(s, m);
 
         } catch (error) { connectionFailure(s, error); }
@@ -98,7 +136,7 @@ function attachChannel(s, channel) {
     if (channel.readyState === 'open') ready(s);
 }
 function peerSend(s, m) {
-    if (!s.closed && s.channel?.readyState === 'open') s.channel.send(JSON.stringify(m));
+    if (!s.closed && s.channel?.readyState === 'open') s.channel.send(JSON.stringify({ ...m, round: s.round || 0 }));
 }
 function showResult(s, m) {
     if (s.closed || s.result || !['host', 'guest'].includes(m.winner)) return;
@@ -129,9 +167,52 @@ function showResult(s, m) {
     $('result-title').focus?.();
     $('reset').hidden = false;
     document.body.classList.remove('racing');
-    // Let the reliable channel deliver the result before closing either transport.
-    s.timeout = setTimeout(() => clean(s), 1000);
+    s.rematchLocal = false;
+    s.rematchRemote = false;
+    $('rematch').disabled = false;
+    $('rematch').textContent = 'REMATCH';
+    $('rematch-status').textContent = 'Play the same map again? Both players must select REMATCH.';
 }
+function restartRace(s, m) {
+    if (s.closed || !s.result || m.round !== (s.round || 0) + 1 || !s.rematchLocal) return;
+    if (s.relay && !s.rematchRemote) return;
+    clearTimeout(s.timeout);
+    clearInterval(s.stream);
+    clearInterval(s.ticker);
+    releaseMovement();
+    s.game?.stop();
+    s.game = null;
+    s.round = m.round;
+    s.result = false;
+    s.finished = false;
+    s.starting = false;
+    s.raceStarted = false;
+    s.rematchLocal = false;
+    s.rematchRemote = false;
+    $('result-screen').hidden = true;
+    roster(s, s.names);
+    void message(s, { type: 'start', startAt: m.startAt, serverNow: m.serverNow }).catch(error => connectionFailure(s, error));
+}
+function maybeRematch(s) {
+    if (!s.relay || s.role !== 'host' || !s.result || !s.rematchLocal || !s.rematchRemote || s.closed) return;
+    const m = { type: 'rematch-start', round: (s.round || 0) + 1, startAt: 3000, serverNow: 0 };
+    // Send before advancing our round so the peer sees the same match number.
+    s.channel.send(JSON.stringify(m));
+    restartRace(s, m);
+}
+$('rematch').addEventListener('click', () => {
+    const s = session;
+    if (!s || !s.result || s.closed || s.rematchLocal) return;
+    if (s.channel?.readyState !== 'open') return end(s, 'Opponent disconnected.');
+    s.rematchLocal = true;
+    $('rematch').disabled = true;
+    $('rematch').textContent = 'REQUESTED';
+    $('rematch-status').textContent = 'Waiting for your opponent to accept the rematch…';
+    if (s.relay) {
+        peerSend(s, { type: 'rematch-request' });
+        maybeRematch(s);
+    } else send(s, { type: 'rematch-request' });
+});
 function declareWinner(s, winner) {
     if (s.result || !s.raceStarted || s.role !== 'host') return;
     const result = { type: 'race-result', winner };
@@ -149,7 +230,19 @@ function maybeStart(s) {
     void message(s, { type: 'start', startAt: 3000, serverNow: 0 }).catch(error => connectionFailure(s, error));
 }
 function relayControl(s, m) {
-    if (!m || typeof m !== 'object' || s.result) return;
+    if (!m || typeof m !== 'object' || s.closed) return;
+    if (m.type === 'rematch-start') {
+        if (s.role === 'guest') restartRace(s, m);
+        return;
+    }
+    if ((m.round || 0) !== (s.round || 0)) return;
+    if (m.type === 'rematch-request' && s.result) {
+        s.rematchRemote = true;
+        if (!s.rematchLocal) $('rematch-status').textContent = 'Your opponent wants a rematch. Select REMATCH to accept.';
+        maybeRematch(s);
+        return;
+    }
+    if (s.result) return;
     if (m.type === 'race-ready' && /^[a-f0-9]{64}$/.test(m.hash || '')) {
         s.remoteHash = m.hash;
         if (s.ready && s.hash !== m.hash) return end(s, 'The map versions do not match. Please create a new room.');
@@ -179,7 +272,7 @@ function ready(s) {
     status('Connected. Waiting for both players to be ready…');
     s.timeout = setTimeout(() => end(s, 'The opponent did not become ready. Please try again.'), 30000);
     if (s.relay) {
-        s.channel.send(JSON.stringify({ type: 'race-ready', hash: s.hash }));
+        peerSend(s, { type: 'race-ready', hash: s.hash });
         maybeStart(s);
     } else send(s, { type: 'ready', hash: s.hash });
 }
@@ -201,6 +294,7 @@ async function message(s, m) {
     switch (m.type) {
         case 'error': end(s, m.message); break;
         case 'ready':
+            if (s.role === 'host' && window.location?.href) showInvite(s);
             if (!s.relay) break;
             clearTimeout(s.timeout);
             if (s.role === 'host') await message(s, { type: 'welcome', role: 'host', map: s.map });
@@ -217,6 +311,7 @@ async function message(s, m) {
             end(s, 'Your opponent left. The race was cancelled.');
             break;
         case 'welcome': {
+            if (s.role === 'host' && window.location?.href) showInvite(s);
             clearTimeout(s.timeout);
             s.role = m.role;
             s.map = String(m.map);
@@ -317,7 +412,7 @@ async function message(s, m) {
                 status('GO! First to the goal wins.');
                 s.stream = setInterval(() => {
                     if (!s.closed && s.channel?.readyState === 'open' && s.channel.bufferedAmount < 8192) {
-                        s.channel.send(JSON.stringify({ type: 'state', ...s.game.getOnlineState() }));
+                        s.channel.send(JSON.stringify({ type: 'state', ...s.game.getOnlineState(), round: s.round || 0 }));
                     }
                 }, 50);
             };
@@ -325,7 +420,16 @@ async function message(s, m) {
             tick();
             break;
         }
-        case 'result': showResult(s, m); break;
+        case 'rematch-request':
+            if (s.result && (m.round || 0) === (s.round || 0)) {
+                s.rematchRemote = true;
+                if (!s.rematchLocal) $('rematch-status').textContent = 'Your opponent wants a rematch. Select REMATCH to accept.';
+            }
+            break;
+        case 'rematch-start': restartRace(s, m); break;
+        case 'result':
+            if ((m.round || 0) === (s.round || 0)) showResult(s, m);
+            break;
         case 'opponent-left': end(s, 'Your opponent left. The race was cancelled.'); break;
     }
 }
@@ -333,7 +437,7 @@ async function message(s, m) {
 $('room-form').addEventListener('submit', event => {
     event.preventDefault();
     if (session) return;
-    const role = event.submitter?.value || 'host';
+    const role = event.submitter?.value || (inviteJoin ? 'guest' : 'host');
     const name = $('nickname').value.trim();
     const room = $('room').value.trim();
     const map = $('map').value.trim();
@@ -346,6 +450,7 @@ $('room-form').addEventListener('submit', event => {
     $('waiting').hidden = false;
     $('arena').hidden = true;
     $('result-screen').hidden = true;
+    $('invite').hidden = true;
     $('waiting-title').textContent = role === 'host' ? 'Creating room' : 'Joining room';
     $('waiting-room').textContent = room;
     $('waiting-map').textContent = role === 'host' ? map : 'Selected by host';

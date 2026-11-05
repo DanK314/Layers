@@ -1,3 +1,4 @@
+import { keyBindings } from "./keybindings.js";
 
 import { GameObject } from "./object.js";
 import { drawColorTexture } from "./texture.js";
@@ -41,6 +42,7 @@ export class Player extends GameObject {
     #lastVx = 0;
     #keyDownHandler = (event) => this.#keyDown(event);
     #keyUpHandler = (event) => this.#keyUp(event);
+    #blurHandler = () => { this.#keys.left = false; this.#keys.right = false; };
 
     constructor(ctx, x, y, onJump = null) {
 
@@ -62,6 +64,7 @@ export class Player extends GameObject {
 
         this.#ctx = ctx;
         this.#onJump = onJump;
+        window.addEventListener("blur", this.#blurHandler);
 
         this.#spawnX = x;
         this.#spawnY = y;
@@ -79,6 +82,7 @@ export class Player extends GameObject {
 
     dispose() {
 
+        window.removeEventListener("blur", this.#blurHandler);
         window.removeEventListener("keydown", this.#keyDownHandler);
         window.removeEventListener("keyup", this.#keyUpHandler);
         this.#jumpSound.pause();
@@ -87,51 +91,19 @@ export class Player extends GameObject {
 
     #keyDown(event) {
         if (!this.inputEnabled) return;
-
-        switch (event.code) {
-
-            case "KeyA":
-
-                this.#keys.left = true;
-
-                event.preventDefault();
-
-                break;
-
-            case "KeyD":
-
-                this.#keys.right = true;
-
-                event.preventDefault();
-
-                break;
-
-            case "KeyW":
-
-                this.#jump();
-
-                event.preventDefault();
-
-                break;
+        const action = keyBindings.action(event);
+        if (action === 'left' || action === 'right') {
+            this.#keys[action] = true;
+            event.preventDefault();
+        } else if (action === 'jump') {
+            if (!event.repeat) this.#jump();
+            event.preventDefault();
         }
     }
 
     #keyUp(event) {
-
-        switch (event.code) {
-
-            case "KeyA":
-
-                this.#keys.left = false;
-
-                break;
-
-            case "KeyD":
-
-                this.#keys.right = false;
-
-                break;
-        }
+        const bindings = keyBindings.get();
+        for (const action of ['left', 'right']) if (bindings[action] === event.code) this.#keys[action] = false;
     }
 
     setHorizontalInput(direction, active) {
