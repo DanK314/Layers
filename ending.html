@@ -4,11 +4,36 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Ending · LAYER:S</title>
-    <style>
-        html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
-    </style>
+    <link rel="stylesheet" href="./ending.css">
 </head>
 <body>
-    <!-- Reserved for the final 3D cutscene. -->
+    <canvas id="ending-canvas" aria-label="3D ending: destroy the black hole and bring the cubes home"></canvas>
+    <div id="flash" aria-hidden="true"></div>
+    <div class="letterbox top"></div><div class="letterbox bottom"></div>
+    <a class="skip" href="./index.html">Skip <span>ESC</span></a>
+    <section id="credits" aria-label="Ending credits" aria-hidden="true">
+        <div id="credits-roll">
+            <p class="eyebrow">LAYER:S</p>
+            <p>Code by Dan_K314</p>
+            <p>Maps by Dan_K314 &amp; StarJPY</p>
+            <p>Sound by Dan_K314</p>
+            <p>Idea &amp; Story by Dan_K314 &amp; StarJPY &amp; seoeunho_12345678</p>
+            <p class="studio">Made by PSGM</p>
+            <p class="thanks">Thank you for playing</p>
+        </div>
+    </section>
+    <section id="conclusion" aria-hidden="true">
+        <p class="eyebrow">LAYER:S</p>
+        <h1>Every color, free again.</h1>
+        <p>Thank you for playing.</p>
+        <nav><button id="replay">Replay</button><a href="./index.html">Main menu</a></nav>
+    </section>
+    <p id="error" hidden>Unable to load the 3D ending. Please check your internet connection and WebGL support. <a href="./index.html">Main menu</a></p>
+    <script type="module">
+        import('./ending.js').catch(error => {
+            console.error(error);
+            document.getElementById('error').hidden = false;
+        });
+    </script>
 </body>
 </html>

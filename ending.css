@@ -1,0 +1,28 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #020309; color: #fff; font-family: system-ui, sans-serif; }
+canvas { display: block; width: 100%; height: 100%; }
+#flash { position: fixed; inset: 0; background: #fff; pointer-events: none; opacity: 0; }
+.letterbox { position: fixed; left: 0; right: 0; height: 7vh; background: #000; pointer-events: none; }
+.top { top: 0; } .bottom { bottom: 0; }
+a, button { color: inherit; font: inherit; }
+.skip { position: fixed; right: 28px; bottom: 22px; text-decoration: none; font-size: 12px; color: #b9bcc8; }
+.skip span { margin-left: 12px; font-size: 10px; opacity: .5; }
+#conclusion { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; text-align: center; background: linear-gradient(transparent, #020309dd); opacity: 0; visibility: hidden; transition: opacity 2s, visibility 2s; }
+#conclusion.visible { opacity: 1; visibility: visible; }
+.eyebrow { letter-spacing: .6em; font-size: 12px; color: #b9c5de; }
+h1 { font-size: clamp(24px, 4vw, 48px); font-weight: 300; letter-spacing: .06em; margin: 20px 0; }
+#conclusion > p:not(.eyebrow) { color: #a4adbf; font-size: 13px; }
+nav { display: flex; gap: 12px; margin-top: 32px; }
+nav a, nav button { text-decoration: none; border: 1px solid #ffffff40; background: #ffffff08; padding: 12px 22px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+a:hover, button:hover { color: #fff; background: #ffffff20; }
+:focus-visible { outline: 2px solid #8bdfff; outline-offset: 5px; }
+#error { position: fixed; inset: 35% 12% auto; text-align: center; line-height: 2; }
+
+#credits { position: fixed; inset: 7vh 0; overflow: hidden; pointer-events: none; background: #020309b8; opacity: 0; visibility: hidden; }
+#credits.visible { opacity: 1; visibility: visible; }
+#credits-roll { position: absolute; top: 0; left: 0; width: 100%; padding: 0 24px; text-align: center; will-change: transform; }
+#credits-roll p { margin: 0 0 clamp(72px, 15vh, 140px); font-size: clamp(15px, 2.5vw, 24px); font-weight: 300; line-height: 1.6; letter-spacing: .04em; overflow-wrap: anywhere; }
+#credits-roll .eyebrow { font-size: 14px; letter-spacing: .6em; color: #b9c5de; }
+#credits-roll .studio { font-size: clamp(24px, 4vw, 40px); }
+#credits-roll .thanks { font-size: clamp(22px, 4vw, 36px); margin-bottom: 0; }
+.skip { z-index: 2; }
