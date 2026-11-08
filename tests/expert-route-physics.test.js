@@ -144,3 +144,22 @@ test('trapdoor shelves can release the player by switching without jumping', () 
     });
     assert.ok(drops >= 3);
 });
+
+
+test('stage 40 needs only the next RGB color on every jump, without a transit phase', () => {
+    const rank = 4;
+    const course = expertCourses[rank];
+    const map = MapParser.parse(expertStages[rank]);
+    // The first red-to-green jump travels left through this gate. Yellow
+    // incorrectly blocks both the departure and destination colors.
+    const firstGate = map.map[24][5];
+    assert.equal(firstGate.type, 'block');
+    assert.equal(firstGate.R, true);
+    assert.equal(firstGate.G, false);
+    assert.equal(firstGate.B, false);
+    for (let i = 1; i < course.points.length; i++) {
+        const initial = i === 1 ? 'R' : layers[(i - 2) % 3];
+        const destination = layers[(i - 1) % 3];
+        assert.ok(canJump(map, course.points[i - 1], course.points[i], 2, 2, initial, destination), 'Stage 40 jump ' + i + ' requires an extra phase');
+    }
+});

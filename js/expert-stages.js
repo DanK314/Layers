@@ -7,7 +7,7 @@ export const expertCourses = [
     route('RGB tower', 16, 34, [[2,30],[6,28],[10,26],[6,24],[2,22],[6,20],[10,18],[6,16],[2,14],[6,12],[10,10],[6,8],[2,6],[6,4]], { roofs: true }),
     { name: 'Falling shutters', width: 22, height: 36, descent: [16,3,16,3,16,3,16], start: 3 },
     route('Reverse skyline', 32, 24, [[2,21],[6,19],[10,17],[14,15],[18,13],[22,11],[26,9],[23,7],[19,5],[15,3],[11,3],[7,3],[3,3]], { roofs: true }),
-    route('Split spires', 26, 32, [[2,28],[6,26],[2,24],[6,22],[2,20],[6,18],[10,16],[14,14],[18,12],[22,10],[18,8],[22,6],[18,4]], { gates: true, mechanic: 'double' }),
+    route('Split spires', 26, 32, [[2,28],[6,26],[2,24],[6,22],[2,20],[6,18],[10,16],[14,14],[18,12],[22,10],[18,8],[22,6],[18,4]], { gates: true, mechanic: 'relay' }),
     route('Sawtooth relay', 38, 20, [[2,16],[5,14],[8,17],[11,15],[14,13],[17,16],[20,14],[23,12],[26,15],[29,13],[32,11]], { roofs: true, gates: true, mechanic: 'trapdoor' }),
     route('Head-hitter gallery', 36, 18, [[2,14],[5,14],[8,13],[11,13],[14,11],[17,11],[20,10],[23,10],[26,8],[29,8],[32,6]], { roofs: true, headHitters: true }),
     { name: 'Offset waterfall', width: 28, height: 44, descent: [21,4,17,7,21,4,17,7,21], start: 4, narrow: true },
