@@ -170,3 +170,99 @@ test('custom keyboard bindings control actual movement and layer changes in Game
     assert.equal(game.getOnlineState().layer, 'G');
   } finally { game?.stop(); keyBindings.reset(); }
 });
+
+
+test('render interpolation smooths intermediate positions without changing physics; lighting uses quarter pixels', () => {
+  const originalCreate = document.createElement;
+  let light;
+  const centers = [];
+  document.createElement = () => {
+    if (light) return canvas();
+    light = canvas();
+    const ctx = light.getContext();
+    ctx.createRadialGradient = (...args) => {
+      centers.push(args.slice(0, 2));
+      return { addColorStop() {} };
+    };
+    return light;
+  };
+  let game;
+  try {
+    game = new Game(canvas(), stage());
+    assert.equal(light.width, 480);
+    assert.equal(light.height, 360);
+    for (let i = 0; i < 50; i++) game.update(1 / 60);
+    game.setInput('right', true);
+    game.update(1 / 60);
+    const state = game.getOnlineState();
+    for (const alpha of [0, 0.5, 1]) game.draw(0, alpha);
+    assert.deepEqual(game.getOnlineState(), state);
+    assert.ok(centers[2][0] > centers[0][0]);
+    assert.ok(Math.abs(centers[1][0] - (centers[0][0] + centers[2][0]) / 2) < 1e-9);
+    game.retry();
+    centers.length = 0;
+    game.draw(0, 0);
+    game.draw(0, 1);
+    assert.deepEqual(centers[0], centers[1]);
+  } finally {
+    game?.stop();
+    document.createElement = originalCreate;
+  }
+});
+
+
+test('static vegetation is built once and reused while blocks move on screen', async () => {
+  const { Block } = await import('../js/block.js');
+  const originalCreate = document.createElement;
+  let curves = 0;
+  let sprites = 0;
+  document.createElement = () => {
+    const c = canvas();
+    c.getContext().bezierCurveTo = () => curves++;
+    return c;
+  };
+  try {
+    const c = canvas();
+    c.getContext().drawImage = () => sprites++;
+    const block = new Block(c.getContext(), 0, 0, '#FF0000', { R: true });
+    block.draw(0, 0, 1);
+    const initial = curves;
+    assert.ok(initial > 0);
+    block.draw(100, 200, 1);
+    block.draw(200, 300, 0.75);
+    assert.equal(curves, initial);
+    assert.equal(sprites, 3);
+    assert.equal(block.ctx, c.getContext());
+  } finally { document.createElement = originalCreate; }
+});
+
+
+test('blackholes reuse glow assets with no per-frame gradients or blurs and preserve pull strength', async () => {
+  const { MiniBlackhole } = await import('../js/mini-blackhole.js');
+  const originalCreate = document.createElement;
+  let created = 0;
+  document.createElement = () => { created++; return canvas(); };
+  const c = canvas();
+  const ctx = c.getContext();
+  const frames = [];
+  ctx.createRadialGradient = () => { assert.fail('gradient must be built offscreen'); };
+  ctx.drawImage = (...args) => frames.push(args);
+  try {
+    const hole = new MiniBlackhole(ctx, 0, 0, '#00FFFF', { G: true, B: true });
+    hole.draw(0, 0, 1, 0);
+    const initialCreated = created;
+    assert.ok(initialCreated > 0);
+    const firstOrbit = frames[1].slice(1);
+    frames.length = 0;
+    hole.draw(0, 0, 1, 1);
+    new MiniBlackhole(ctx, 100, 100, '#00FFFF', { G: true }).draw(100, 100, 1, 1);
+    assert.equal(created, initialCreated);
+    assert.notDeepEqual(frames[1].slice(1), firstOrbit);
+    assert.equal(Object.hasOwn(ctx, 'shadowBlur'), false);
+    const player = { x: 116, y: 16, w: 32, h: 32, vx: 0, vy: 0 };
+    hole.pull(player, 1 / 60);
+    assert.ok(Math.abs(player.vx + 12000 * (1 - 100 / 224) / 60) < 1e-9);
+    assert.equal(player.vy, 0);
+  } finally { document.createElement = originalCreate; }
+});
+

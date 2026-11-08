@@ -1,3 +1,5 @@
+import { expertStages } from "./expert-stages.js";
+
 const stage = [
     {
         color: `
@@ -1391,6 +1393,7 @@ WWWWWWWWWWWWWWWW
 ################
         `
     },
+    ...expertStages,
 ];
 console.log('Stages : ' + stage.length)
 

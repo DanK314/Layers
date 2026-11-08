@@ -9,6 +9,7 @@ import { Spike } from "./spike.js";
 import { MiniBlackhole } from "./mini-blackhole.js";
 
 const PLAYER_FLASHLIGHT_SIZE = 600;
+const LIGHT_RESOLUTION = 0.5;
 const CAMERA_SMOOTHING = 8;
 const CAMERA_VIEW_TILES = 12;
 const MOBILE_CAMERA_VIEW_TILES = 14;
@@ -42,6 +43,10 @@ export class Game {
     #layerFlashDuration = 0.35;
     #layerFlashColor = "#FFFFFF";
     #player;
+    #previousPlayerX = 0;
+    #previousPlayerY = 0;
+    #renderPlayerX = 0;
+    #renderPlayerY = 0;
     #goal;
     #layerChangeSound = new Audio("./sfx/click.wav");
     #explosionSound = new Audio("./sfx/explosion.wav");
@@ -69,6 +74,7 @@ export class Game {
     };
     #fps = 0;
     #frameTime = 0;
+    #maxFrameTime = 0;
     #elapsedTime = 0;
     #stageTime = 0;
     #stageFinished = false;
@@ -129,8 +135,12 @@ export class Game {
 
         this.#canvas.width = window.innerWidth;
         this.#canvas.height = window.innerHeight;
-        this.#lightCanvas.width = this.#canvas.width;
-        this.#lightCanvas.height = this.#canvas.height;
+        this.#lightCanvas.width = Math.max(1, Math.ceil(this.#canvas.width * LIGHT_RESOLUTION));
+        this.#lightCanvas.height = Math.max(1, Math.ceil(this.#canvas.height * LIGHT_RESOLUTION));
+        this.#lightCtx.setTransform(
+            this.#lightCanvas.width / this.#canvas.width, 0, 0,
+            this.#lightCanvas.height / this.#canvas.height, 0, 0
+        );
         this.#createFallingStars();
 
         // Match the touch controls: fit two extra tiles on mobile screens.
@@ -166,9 +176,9 @@ export class Game {
 
     #updateCamera(deltaTime = 1 / 60, snap = false) {
         const playerCenterX =
-            (this.#player.x + this.#player.w / 2) * this.#scale;
+            (this.#renderPlayerX + this.#player.w / 2) * this.#scale;
         const playerCenterY =
-            (this.#player.y + this.#player.h / 2) * this.#scale;
+            (this.#renderPlayerY + this.#player.h / 2) * this.#scale;
 
         const targetOffsetX =
             this.#canvas.width / 2 - playerCenterX;
@@ -179,7 +189,7 @@ export class Game {
             : (this.#canvas.height - worldHeight) / 2;
         const holdingForSkyDrop =
             this.#cameraAnchorY !== null &&
-            this.#player.y <
+            this.#renderPlayerY <
                 this.#cameraAnchorY - this.#player.h - this.#tileSize * 2;
 
         if (this.#cameraAnchorY !== null && !holdingForSkyDrop) {
@@ -318,6 +328,7 @@ export class Game {
             this.#startFromSky = false;
         }
 
+        this.#syncPlayerRendering();
         this.#updateCamera(0, true);
 
         this.#spawnPoint = {
@@ -409,6 +420,7 @@ export class Game {
         this.#explosionLightPoint = explosionPoint;
         this.#explosionLightTime = this.#explosionLightDuration;
         this.#player.respawn();
+        this.#syncPlayerRendering();
         this.#spawnElapsed = 0;
         this.#particleSpawnTime = 0;
     }
@@ -639,7 +651,14 @@ export class Game {
         this.#onStageEnded?.(false);
     }
 
+    #syncPlayerRendering() {
+        this.#previousPlayerX = this.#renderPlayerX = this.#player.x;
+        this.#previousPlayerY = this.#renderPlayerY = this.#player.y;
+    }
+
     update(deltaTime) {
+        this.#previousPlayerX = this.#player.x;
+        this.#previousPlayerY = this.#player.y;
         if (this.#raceFrozen || this.#countdownPaused) return;
 
         this.#explosionLightTime = Math.max(
@@ -709,6 +728,7 @@ export class Game {
         ) {
 
             this.#player.respawn();
+            this.#syncPlayerRendering();
 
             return;
         }
@@ -922,7 +942,12 @@ export class Game {
         this.#transitionLoaded = true;
     }
 
-    draw(deltaTime = 1 / 60) {
+    draw(deltaTime = 1 / 60, interpolation = 1) {
+        // Interpolate presentation only; collisions, input and race times stay at 60 Hz.
+        this.#renderPlayerX = this.#previousPlayerX +
+            (this.#player.x - this.#previousPlayerX) * interpolation;
+        this.#renderPlayerY = this.#previousPlayerY +
+            (this.#player.y - this.#previousPlayerY) * interpolation;
 
         const ctx = this.#ctx;
 
@@ -960,10 +985,10 @@ export class Game {
 
         for (const miniBlackhole of this.#miniBlackholes) {
             if (!this.#isVisible(
-                miniBlackhole.x,
-                miniBlackhole.y,
-                miniBlackhole.w,
-                miniBlackhole.h
+                miniBlackhole.x + miniBlackhole.w / 2 - MiniBlackhole.PULL_RADIUS,
+                miniBlackhole.y + miniBlackhole.h / 2 - MiniBlackhole.PULL_RADIUS,
+                MiniBlackhole.PULL_RADIUS * 2,
+                MiniBlackhole.PULL_RADIUS * 2
             )) {
                 continue;
             }
@@ -1083,13 +1108,13 @@ export class Game {
         const playerScreenX =
             Math.round(
                 this.#offsetX +
-                this.#player.x * this.#scale
+                this.#renderPlayerX * this.#scale
             );
 
         const playerScreenY =
             Math.round(
                 this.#offsetY +
-                this.#player.y * this.#scale
+                this.#renderPlayerY * this.#scale
             );
 
         const spawnProgress =
@@ -1251,11 +1276,11 @@ export class Game {
 
         const playerCenterX =
             this.#offsetX +
-            (this.#player.x + this.#player.w / 2) * this.#scale;
+            (this.#renderPlayerX + this.#player.w / 2) * this.#scale;
 
         const playerCenterY =
             this.#offsetY +
-            (this.#player.y + this.#player.h / 2) * this.#scale;
+            (this.#renderPlayerY + this.#player.h / 2) * this.#scale;
 
         const radius = PLAYER_FLASHLIGHT_SIZE * this.#scale;
 
@@ -1267,7 +1292,10 @@ export class Game {
         );
 
         for (const miniBlackhole of this.#miniBlackholes) {
-            if (!miniBlackhole.isSolid(this.#activeLayer)) {
+            if (!miniBlackhole.isSolid(this.#activeLayer) || !this.#isVisible(
+                miniBlackhole.x + miniBlackhole.w / 2 - 140,
+                miniBlackhole.y + miniBlackhole.h / 2 - 140, 280, 280
+            )) {
                 continue;
             }
 
@@ -1303,7 +1331,9 @@ export class Game {
         ctx.drawImage(
             this.#lightCanvas,
             0,
-            0
+            0,
+            this.#canvas.width,
+            this.#canvas.height
         );
         ctx.restore();
 
@@ -1572,6 +1602,12 @@ export class Game {
         );
 
         ctx.fillText(
+            `MAX ${this.#maxFrameTime.toFixed(1)} ms`,
+            padding,
+            this.#canvas.width < 600 ? padding + 64 : padding + 24
+        );
+
+        ctx.fillText(
             timerText,
             this.#canvas.width < 600 ? padding : padding + 220,
             this.#canvas.width < 600 ? padding + 24 : padding
@@ -1595,6 +1631,9 @@ export class Game {
 
         let lastTime = performance.now();
         let physicsAccumulator = 0;
+        let sampleTime = 0;
+        let sampleFrames = 0;
+        let sampleMax = 0;
         const physicsStep = 1 / 60;
 
         const loop = (currentTime) => {
@@ -1608,8 +1647,17 @@ export class Game {
 
             lastTime = currentTime;
 
-            this.#frameTime = frameDeltaTime * 1000;
-            this.#fps = frameDeltaTime > 0 ? 1 / frameDeltaTime : 0;
+            sampleTime += frameDeltaTime;
+            sampleFrames++;
+            sampleMax = Math.max(sampleMax, frameDeltaTime * 1000);
+            if (sampleTime >= 0.5) {
+                this.#fps = sampleFrames / sampleTime;
+                this.#frameTime = sampleTime * 1000 / sampleFrames;
+                this.#maxFrameTime = sampleMax;
+                sampleTime = 0;
+                sampleFrames = 0;
+                sampleMax = 0;
+            }
             if (!this.#countdownPaused && !this.#raceFrozen) this.#elapsedTime += frameDeltaTime;
 
             /*
@@ -1628,7 +1676,7 @@ export class Game {
                 physicsAccumulator -= physicsStep;
             }
 
-            this.draw(frameDeltaTime);
+            this.draw(frameDeltaTime, physicsAccumulator / physicsStep);
 
             this.#animationFrameId = requestAnimationFrame(loop);
         };

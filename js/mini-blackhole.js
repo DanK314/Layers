@@ -1,5 +1,51 @@
 import { drawColorTexture } from "./texture.js";
 
+// Shared across all holes of the same color; never blur twelve paths per hole per frame.
+const effectCache = new Map();
+function glowSprite(color, radius) {
+    const padding = 24;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = Math.ceil((radius + padding) * 2);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height / 2, radius, 0, Math.PI * 2);
+    ctx.fill();
+    return canvas;
+}
+function effectsFor(color) {
+    if (effectCache.has(color)) return effectCache.get(color);
+    const range = document.createElement("canvas");
+    const radius = MiniBlackhole.PULL_RADIUS;
+    range.width = range.height = radius * 2 + 4;
+    const ctx = range.getContext("2d");
+    const center = range.width / 2;
+    const gradient = ctx.createRadialGradient(center, center, 64 * 0.28, center, center, radius);
+    gradient.addColorStop(0, `${color}18`);
+    gradient.addColorStop(1, `${color}00`);
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.2;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    const effects = {
+        range,
+        particles: Array.from({ length: 12 }, (_, i) => glowSprite(color, 1.5 + i / 12 * 1.5)),
+        core: glowSprite(color, 64 * 0.28 * 0.65)
+    };
+    effectCache.set(color, effects);
+    return effects;
+}
+function drawSprite(ctx, sprite, x, y, scale) {
+    const width = sprite.width * scale;
+    const height = sprite.height * scale;
+    ctx.drawImage(sprite, x - width / 2, y - height / 2, width, height);
+}
+
 export class MiniBlackhole {
 
     x;
@@ -54,35 +100,8 @@ export class MiniBlackhole {
         ctx.save();
 
         const drawAlpha = ctx.globalAlpha;
-        const pullRadius = MiniBlackhole.PULL_RADIUS * scale;
-        const range = ctx.createRadialGradient(
-            centerX,
-            centerY,
-            radius,
-            centerX,
-            centerY,
-            pullRadius
-        );
-
-        range.addColorStop(0, `${this.#color}18`);
-        range.addColorStop(1, `${this.#color}00`);
-
-        ctx.fillStyle = range;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, pullRadius, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.globalAlpha *= 0.2;
-        ctx.strokeStyle = this.#color;
-        ctx.lineWidth = Math.max(1, scale);
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, pullRadius, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.globalAlpha = drawAlpha;
-        ctx.fillStyle = this.#color;
-        ctx.shadowColor = this.#color;
-        ctx.shadowBlur = 8 * scale;
+        const effects = effectsFor(this.#color);
+        drawSprite(ctx, effects.range, centerX, centerY, scale);
 
         for (let particle = 0; particle < 12; particle++) {
             const progress = particle / 12;
@@ -90,12 +109,8 @@ export class MiniBlackhole {
             const orbit = radius * (0.35 + progress * 0.65);
             const x = centerX + Math.cos(angle) * orbit;
             const y = centerY + Math.sin(angle) * orbit * 0.72;
-            const size = Math.max(1, (1.5 + progress * 1.5) * scale);
-
-            ctx.globalAlpha = 0.35 + progress * 0.45;
-            ctx.beginPath();
-            ctx.arc(x, y, size, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.globalAlpha = drawAlpha * (0.35 + progress * 0.45);
+            drawSprite(ctx, effects.particles[particle], x, y, scale);
         }
 
         const coreRadius = radius * 0.65;
@@ -104,10 +119,7 @@ export class MiniBlackhole {
         const coreSize = coreRadius * 2;
 
         ctx.globalAlpha = drawAlpha;
-        ctx.fillStyle = this.#color;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, coreRadius, 0, Math.PI * 2);
-        ctx.fill();
+        drawSprite(ctx, effects.core, centerX, centerY, scale);
 
         drawColorTexture(
             ctx,

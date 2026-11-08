@@ -93,7 +93,7 @@ function onCampaignStageCleared(index) {
 function playStage(index) {
     if (gameStarted || !progress.isUnlocked(index)) return;
     stageDialog.close();
-    if (index === 0 && !progress.introSeen) {
+    if (index === 0) {
         window.location.href = './cutscene.html';
     } else startGame(null, false, index);
 }
@@ -590,5 +590,5 @@ if (sharedMapId) {
     void startUserMap(sharedMapId);
 } else if (startAfterCutscene) {
     progress.markIntroSeen();
-    startGame(null, progress.resumeIndex === 0);
+    startGame(null, true, 0);
 }

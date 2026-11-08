@@ -12,6 +12,7 @@ export class Block extends GameObject {
     color;
     grassBlades;
     vines;
+    #vegetation = null;
 
     constructor(
         ctx,
@@ -102,6 +103,34 @@ export class Block extends GameObject {
             "rect"
         );
 
+        // Static decoration is rasterized once, rather than rebuilding every leaf per frame.
+        if (!this.#vegetation) this.#cacheVegetation();
+        const { canvas, left, top } = this.#vegetation;
+        this.ctx.drawImage(canvas, screenX - left * scale, screenY - top * scale,
+            canvas.width * scale, canvas.height * scale);
+    }
+
+    #cacheVegetation() {
+        const left = 8;
+        const top = 28;
+        const canvas = document.createElement("canvas");
+        canvas.width = this.w + left * 2;
+        canvas.height = top + this.h + Math.ceil(Block.MAX_VINE_LENGTH) + 8;
+        const originalCtx = this.ctx;
+        this.ctx = canvas.getContext("2d");
+        try {
+            this.#drawVegetation(left, top, 1);
+            this.#vegetation = { canvas, left, top };
+        } finally {
+            this.ctx = originalCtx;
+        }
+    }
+
+    #drawVegetation(screenX, screenY, scale) {
+        const visualPadding = Block.VISUAL_PADDING * scale;
+        const visualX = screenX - visualPadding;
+        const visualY = screenY - visualPadding;
+        const visualScale = scale * (this.w + Block.VISUAL_PADDING * 2) / this.w;
         for (const blade of this.grassBlades) {
             const baseX = visualX + blade.x * visualScale;
             const baseY = visualY;

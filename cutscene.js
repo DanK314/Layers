@@ -2401,6 +2401,13 @@ function onCutsceneEnd() {
     window.location.href = "./index.html?startGame=1";
 }
 
+window.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        onCutsceneEnd();
+    }
+});
+
 
 // ==================================================
 // Resize
