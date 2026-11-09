@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { expertCourses, expertStages, platformSpec } from '../js/expert-stages.js';
+import { expertCourses, expertStages, platformSpec } from './fixtures/campaign-routes.js';
 import { MapParser } from '../js/map.js';
 import { BoxCollider } from '../js/engine.js';
 
@@ -146,20 +146,37 @@ test('trapdoor shelves can release the player by switching without jumping', () 
 });
 
 
-test('stage 40 needs only the next RGB color on every jump, without a transit phase', () => {
-    const rank = 4;
-    const course = expertCourses[rank];
-    const map = MapParser.parse(expertStages[rank]);
-    // The first red-to-green jump travels left through this gate. Yellow
-    // incorrectly blocks both the departure and destination colors.
-    const firstGate = map.map[24][5];
-    assert.equal(firstGate.type, 'block');
-    assert.equal(firstGate.R, true);
-    assert.equal(firstGate.G, false);
-    assert.equal(firstGate.B, false);
-    for (let i = 1; i < course.points.length; i++) {
-        const initial = i === 1 ? 'R' : layers[(i - 2) % 3];
-        const destination = layers[(i - 1) % 3];
-        assert.ok(canJump(map, course.points[i - 1], course.points[i], 2, 2, initial, destination), 'Stage 40 jump ' + i + ' requires an extra phase');
+test('stages 40 and 45 cross gates directly in the destination color', () => {
+    for (const rank of [4, 9]) {
+        const course = expertCourses[rank];
+        const map = MapParser.parse(expertStages[rank]);
+        for (let i = 1; i < course.points.length - (course.airSwitchExit ? 2 : 0); i++) {
+            const initial = i === 1 ? 'R' : layers[(i - 2) % 3];
+            const destination = layers[(i - 1) % 3];
+            const fromWidth = i === 1 || rank < 7 ? 2 : 1;
+            const toWidth = i === course.points.length - 1 || rank < 7 ? 2 : 1;
+            assert.ok(canJump(map, course.points[i - 1], course.points[i], fromWidth, toWidth, initial, destination), 'Stage ' + (36 + rank) + ' jump ' + i);
+        }
     }
+});
+
+test('air-switch exits use two color presses during a single jump', () => {
+    let count = 0;
+    expertCourses.forEach((course, rank) => {
+        if (!course.airSwitchExit) return;
+        const map = MapParser.parse(expertStages[rank]);
+        const i = course.points.length - 2;
+        const from = platformSpec(course, rank, i - 1), to = platformSpec(course, rank, i);
+        const transit = layers[(layers.indexOf(from.layer) + 1) % 3];
+        assert.equal(to.layer, layers[(layers.indexOf(from.layer) + 2) % 3]);
+        assert.equal(canJump(map, course.points[i - 1], course.points[i], from.size, to.size, from.layer, transit), false);
+        let found = false;
+        for (const delay of [4, 8, 12, 16, 20]) {
+            if (canJump(map, course.points[i - 1], course.points[i], from.size, to.size, from.layer, to.layer, transit, delay)) { found = true; break; }
+        }
+        assert.ok(found, course.name + ': two presses could not reach the landing');
+        assert.ok(rank >= 4);
+        count++;
+    });
+    assert.equal(count, 7);
 });

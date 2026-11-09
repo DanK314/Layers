@@ -265,4 +265,3 @@ test('blackholes reuse glow assets with no per-frame gradients or blurs and pres
     assert.equal(player.vy, 0);
   } finally { document.createElement = originalCreate; }
 });
-

@@ -29,6 +29,7 @@
             <span>
                 MAP EDITOR
             </span>
+            <button id="test-button" type="button">TEST MAP <span aria-hidden="true">↗</span></button>
 
         </header>
 
@@ -101,14 +102,7 @@
                         COLOR
                     </div>
 
-                    <button
-                        id="texture-toggle-button"
-                        class="texture-toggle-button"
-                        type="button"
-                        aria-pressed="true"
-                    >
-                        TEXTURES: ON
-                    </button>
+
 
                     <button class="color-button selected" data-color="W" aria-label="White">
                         <span class="color-swatch color-white"></span>
@@ -154,24 +148,34 @@
 
             <section id="map-editor">
 
-                <canvas id="map-canvas"></canvas>
+                <div id="map-edit-controls" aria-label="Editor tools">
+                    <div id="map-tool-controls" role="group" aria-label="Drawing tool">
+                        <button type="button" data-editor-tool="brush" aria-pressed="true">BRUSH</button>
+                        <button type="button" data-editor-tool="rectangle" aria-pressed="false">RECT</button>
+                        <button type="button" data-editor-tool="select" aria-pressed="false">SELECT</button>
+                    </div>
+                    <div id="map-history-controls" role="group" aria-label="Edit history">
+                        <button id="undo-button" type="button" title="Undo (Ctrl+Z)" aria-label="Undo last edit" disabled>↶ <span>UNDO</span></button>
+                        <button id="redo-button" type="button" title="Redo (Ctrl+Shift+Z)" aria-label="Redo last edit" disabled>↷ <span>REDO</span></button>
+                    </div>
+                    <div id="map-clipboard-controls" role="group" aria-label="Copy and paste selection">
+                        <button id="copy-selection-button" type="button" title="Copy selection (Ctrl+C / Cmd+C)" disabled>COPY</button>
+                        <button id="paste-selection-button" type="button" title="Paste selection (Ctrl+V / Cmd+V)" disabled>PASTE</button>
+                    </div>
+                    <div id="map-view-controls" aria-label="Map view controls">
+                        <button id="pan-mode-button" type="button" aria-pressed="false">
+                            PAN: OFF
+                        </button>
+                        <button id="center-view-button" type="button">
+                            CENTER
+                        </button>
+                    </div>
 
-                <div id="map-tool-controls" role="group" aria-label="Drawing tool">
-                    <button type="button" data-editor-tool="brush" aria-pressed="true">BRUSH</button>
-                    <button type="button" data-editor-tool="rectangle" aria-pressed="false">RECT FILL</button>
                 </div>
-                <div id="map-history-controls" role="group" aria-label="Edit history">
-                    <button id="undo-button" type="button" title="Undo (Ctrl+Z)" aria-label="Undo last edit" disabled>↶ UNDO</button>
-                    <button id="redo-button" type="button" title="Redo (Ctrl+Shift+Z)" aria-label="Redo last edit" disabled>↷ REDO</button>
+                <div id="canvas-viewport" aria-label="Map workspace">
+                    <canvas id="map-canvas" aria-label="Map editing canvas"></canvas>
                 </div>
-                <div id="map-view-controls" aria-label="Map view controls">
-                    <button id="pan-mode-button" type="button" aria-pressed="false">
-                        PAN: OFF
-                    </button>
-                    <button id="center-view-button" type="button">
-                        CENTER
-                    </button>
-                </div>
+                <p id="clipboard-status" role="status" aria-live="polite">Choose a tool and draw. SELECT an area to copy and paste.</p>
 
             </section>
 
@@ -201,13 +205,17 @@
             </div>
 
             <div id="editor-actions-wrap">
-                <button id="editor-menu-toggle" type="button" aria-expanded="false" aria-controls="editor-actions-menu">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
+                <button id="editor-menu-toggle" type="button" aria-expanded="false" aria-controls="editor-actions-menu">MAP ACTIONS <span aria-hidden="true">⌃</span></button>
 
-                <div id="editor-actions-menu" role="menu" aria-label="Map actions">
+                <div id="editor-actions-menu" aria-label="Map actions">
+                    <button
+                        id="texture-toggle-button"
+                        class="texture-toggle-button"
+                        type="button"
+                        aria-pressed="true"
+                    >
+                        TEXTURES: ON
+                    </button>
                     <button id="clear-button" type="button">
                         CLEAR
                     </button>
@@ -228,14 +236,12 @@
                         COPY CODE
                     </button>
 
-                    <button id="test-button" type="button">
-                        TEST MAP
-                    </button>
+
                 </div>
             </div>
 
         </footer>
-        <p id="autosave-status" role="status" aria-live="polite" style="flex-shrink: 0; font: 12px/1.5 sans-serif; color: #cacaca; margin: 0; padding: 4px 16px;">Autosave ready · this browser only.</p>
+        <p id="autosave-status" role="status" aria-live="polite">Autosave ready · this browser only.</p>
 
     </main>
 
@@ -255,7 +261,7 @@
     <dialog id="clear-map-dialog" aria-labelledby="clear-map-title">
         <div class="load-code-content">
             <h2 id="clear-map-title">CLEAR MAP?</h2>
-            <p>Clear all objects from the current map? This cannot be undone.</p>
+            <p>Clear all objects from the current map? You can restore it with UNDO.</p>
             <div class="load-code-actions">
                 <button id="cancel-clear-map-button" type="button">CANCEL</button>
                 <button id="confirm-clear-map-button" type="button">CLEAR MAP</button>

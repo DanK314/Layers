@@ -1,3 +1,4 @@
+import { copyRegion, pasteRegion, clipboardShortcut } from "./editor-clipboard.js";
 import { fillRectangle, rectangleBounds } from "./editor-rectangle.js";
 import { createMapVerification } from "./map-verification.js";
 import { createEditorHistory, historyShortcut } from "./editor-history.js";
@@ -92,6 +93,8 @@ uploadPanel.append(
 copyButton.insertAdjacentElement("afterend", uploadPanel);
 
 function mapChanged() {
+    if (selection) { selection = null; draw(); }
+    copySelectionButton.disabled = true;
     verification.invalidate();
     uploadButton.disabled = true;
     verifyStatus.textContent = 'Map changed. Clear it again to verify before uploading.';
@@ -116,6 +119,16 @@ editorActionsMenu.addEventListener("click", event => {
         toggleEditorMenu(false);
     }
 });
+
+for (const element of [editorMenuToggle, editorActionsMenu]) {
+    element.addEventListener('keydown', event => {
+        if (event.key !== 'Escape' || !editorActionsMenu.classList.contains('open')) return;
+        event.preventDefault();
+        event.stopPropagation();
+        toggleEditorMenu(false);
+        editorMenuToggle.focus();
+    });
+}
 
 panModeButton.addEventListener("click", () => {
     panModeEnabled = !panModeEnabled;
@@ -192,17 +205,58 @@ const camera = {
 };
 let previewGame = null;
 let editorTool = 'brush';
+let selection = null;
+let clipboard = null;
+let pasteTarget = null;
+const copySelectionButton = document.querySelector('#copy-selection-button');
+const pasteSelectionButton = document.querySelector('#paste-selection-button');
+const clipboardStatus = document.querySelector('#clipboard-status');
 let rectangleStart = null;
 let rectangleEnd = null;
 const toolButtons = document.querySelectorAll('[data-editor-tool]');
-for (const button of toolButtons) button.addEventListener('click', () => {
+function setEditorTool(tool) {
     finishPointerInteraction();
-    editorTool = button.dataset.editorTool;
-    for (const other of toolButtons) other.setAttribute('aria-pressed', String(other === button));
+    editorTool = tool;
+    for (const button of toolButtons) button.setAttribute('aria-pressed', String(button.dataset.editorTool === tool));
+    draw();
+}
+for (const button of toolButtons) button.addEventListener('click', () => setEditorTool(button.dataset.editorTool));
+function copySelection() {
+    finishPointerInteraction();
+    if (!selection) return;
+    clipboard = copyRegion(currentMap(), selection.start, selection.end);
+    pasteSelectionButton.disabled = false;
+    clipboardStatus.textContent = `Copied ${clipboard.width} × ${clipboard.height}. PASTE, then tap a destination.`;
+}
+function beginPaste() {
+    if (!clipboard) return;
+    setEditorTool('paste');
+    pasteTarget = null;
+    clipboardStatus.textContent = 'Tap a destination to paste. Escape or another tool cancels.';
+}
+copySelectionButton.addEventListener('click', copySelection);
+pasteSelectionButton.addEventListener('click', beginPaste);
+window.addEventListener('keydown', event => {
+    if (previewGame || document.querySelector('dialog[open]')) return;
+    const action = clipboardShortcut(event);
+    if (action === 'copy' && selection) { event.preventDefault(); copySelection(); }
+    if (action === 'paste' && clipboard) { event.preventDefault(); beginPaste(); }
+    if (event.key === 'Escape') {
+        selection = null;
+        copySelectionButton.disabled = true;
+        setEditorTool('brush');
+        clipboardStatus.textContent = 'Selection cancelled.';
+    }
 });
 function drawRectangleSelection() {
-    if (!rectangleStart || !rectangleEnd) return;
-    const b = rectangleBounds(rectangleStart, rectangleEnd, MAP_WIDTH, MAP_HEIGHT);
+    let start = rectangleStart ?? selection?.start;
+    let end = rectangleEnd ?? selection?.end;
+    if (editorTool === 'paste' && clipboard && pasteTarget) {
+        start = pasteTarget;
+        end = { x: start.x + clipboard.width - 1, y: start.y + clipboard.height - 1 };
+    }
+    if (!start || !end) return;
+    const b = rectangleBounds(start, end, MAP_WIDTH, MAP_HEIGHT);
     const size = getCellSize();
     ctx.save();
     ctx.fillStyle = '#ffffff22'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
@@ -412,23 +466,18 @@ function resizeCanvas() {
 
     const rect = canvas.getBoundingClientRect();
 
-    const size = Math.min(
-        rect.width,
-        rect.height
-    );
-
-    canvas.width = size;
-    canvas.height = size;
+    // Fill the available workspace; cell sizing keeps the map's tiles square.
+    canvas.width = Math.max(1, Math.round(rect.width));
+    canvas.height = Math.max(1, Math.round(rect.height));
 
     recenterMapView();
     draw();
 }
 
 
-window.addEventListener(
-    "resize",
-    resizeCanvas
-);
+// The workspace changes when palettes/toolbars reflow, including mobile rotation.
+const workspaceObserver = new ResizeObserver(resizeCanvas);
+workspaceObserver.observe(document.querySelector('#canvas-viewport'));
 
 
 /*
@@ -900,9 +949,8 @@ window.addEventListener(
     "keydown",
     event => {
 
-        if (previewGame) {
-            return;
-        }
+        if (previewGame || document.querySelector('dialog[open]') || event.ctrlKey || event.metaKey ||
+            event.target?.closest?.('input, textarea, select, [contenteditable]')) return;
 
         const keyMap = {
             "1": ".",
@@ -1022,7 +1070,12 @@ canvas.addEventListener(
             return;
         }
 
-        if (editorTool === 'rectangle') {
+        if (editorTool === 'paste' && clipboard) {
+            pasteTarget = cell;
+            draw();
+            return;
+        }
+        if (editorTool === 'rectangle' || editorTool === 'select') {
             rectangleStart = rectangleEnd = cell;
             draw();
             return;
@@ -1053,6 +1106,11 @@ canvas.addEventListener(
             return;
         }
 
+        if (editorTool === 'paste' && !isPanning) {
+            pasteTarget = getCellFromMouse(event);
+            draw();
+            return;
+        }
         if (event.pointerId !== activePointerId) {
             return;
         }
@@ -1080,7 +1138,7 @@ canvas.addEventListener(
             return;
         }
 
-        if (editorTool === 'rectangle') {
+        if (editorTool === 'rectangle' || editorTool === 'select') {
             if (rectangleStart) rectangleEnd = cell;
             draw();
             return;
@@ -1127,8 +1185,22 @@ function finishPointerInteraction(event) {
         return;
     }
 
+    // Commit on release so pointer cancellation and two-finger gestures never paste.
+    if (event?.type === 'pointerup' && isMouseDown && editorTool === 'paste' && clipboard && pasteTarget) {
+        const cell = pasteTarget;
+        if (pasteRegion(currentMap(), clipboard, cell)) mapChanged();
+        selection = { start: cell, end: { x: Math.min(MAP_WIDTH - 1, cell.x + clipboard.width - 1), y: Math.min(MAP_HEIGHT - 1, cell.y + clipboard.height - 1) } };
+        copySelectionButton.disabled = false;
+        editorTool = 'select';
+        for (const button of toolButtons) button.setAttribute('aria-pressed', String(button.dataset.editorTool === editorTool));
+        clipboardStatus.textContent = 'Pasted. Ctrl+Z / UNDO restores the previous map.';
+    }
     if (rectangleStart && rectangleEnd && event?.type === 'pointerup') {
-        if (fillRectangle(currentMap(), rectangleStart, rectangleEnd, selectedObject, selectedColor)) mapChanged();
+        if (editorTool === 'select') {
+            selection = { start: rectangleStart, end: rectangleEnd };
+            copySelectionButton.disabled = false;
+            clipboardStatus.textContent = 'Area selected. COPY or Ctrl+C / Cmd+C.';
+        } else if (editorTool === 'rectangle' && fillRectangle(currentMap(), rectangleStart, rectangleEnd, selectedObject, selectedColor)) mapChanged();
     }
     rectangleStart = rectangleEnd = null;
     draw();

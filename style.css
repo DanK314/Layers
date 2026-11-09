@@ -762,3 +762,10 @@ html.starting-game.fade-in::after {
 [data-binding-list] > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; font: 13px sans-serif; }
 #keybinding-dialog button { min-height: 44px; min-width: 120px; padding: 10px; color: #fff; background: #181818; border: 1px solid #666; border-radius: 4px; cursor: pointer; }
 #keybinding-dialog button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.map-search { margin: 12px 0; }
+.map-search label { display: block; margin-bottom: 8px; font: 12px Arial, sans-serif; }
+.map-search-row { display: flex; flex-wrap: wrap; gap: 8px; }
+#user-map-browser .map-search input { flex: 1 1 160px; min-width: 0; width: 100%; min-height: 44px; padding: 10px; border: 1px solid #555; border-radius: 4px; background: #111; color: #fff; font-size: 16px; }
+#user-map-browser .map-search button { min-height: 44px; padding: 10px 12px; }
+.map-search[hidden] { display: none; }

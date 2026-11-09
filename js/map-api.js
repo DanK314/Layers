@@ -46,8 +46,9 @@ export async function loadMap(mapId, options = {}) {
 }
 
 // The listing endpoint returns metadata only, in creation order (newest first).
-export async function listMaps({ cursor = null, signal } = {}) {
+export async function listMaps({ cursor = null, search = "", signal } = {}) {
     const query = new URLSearchParams({ limit: "20" });
+    if (search.trim()) query.set("q", search.trim());
     if (cursor !== null) query.set("cursor", String(cursor));
     let result;
     try {

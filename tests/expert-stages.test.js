@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { stageArray, MapParser } from '../js/map.js';
-import { expertCourses, expertStages, platformSpec } from '../js/expert-stages.js';
+import { expertCourses, expertStages, platformSpec } from './fixtures/campaign-routes.js';
 import { BoxCollider } from '../js/engine.js';
 globalThis.document = { documentElement: { dataset: {} } };
 globalThis.localStorage = { getItem: () => 'false' };
@@ -19,7 +19,7 @@ test('expert campaign has 15 distinct arenas, valid endpoints and no blackholes'
         const map = MapParser.parse(raw);
         assert.equal(raw.object.includes('O'), false);
         for (const key of ['color', 'object']) {
-            const rows = raw[key].split('\n');
+            const rows = raw[key].trim().split('\n').map(row => row.trim());
             assert.equal(rows.length, raw.height);
             assert.ok(rows.every(row => row.length === raw.width));
         }
@@ -43,9 +43,9 @@ test('routes mix relay, double-switch, dual-color, neutral, trapdoor and needle 
             mechanics.add(spec.mechanic);
             assert.equal(map.map[y][x].type, 'block');
             assert.equal(course.points[i][1] - y <= 2, true);
-            if (spec.trapdoor) assert.equal(map.map[y - 1][x].type, undefined);
+            if (spec.canopy === '.') assert.equal(map.map[y - 1][x].type, undefined);
             else assert.equal(map.map[y - 1][x].type, 'spike');
-            if (spec.mechanic === 'dual') {
+            if (spec.mechanic === 'dual' && !spec.airTakeoff && !spec.airLanding) {
                 assert.equal(['R', 'G', 'B'].filter(l => map.map[y][x][l]).length, 2);
             }
             if (spec.floor === 'W') assert.ok(map.map[y][x].R && map.map[y][x].G && map.map[y][x].B);

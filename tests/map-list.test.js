@@ -76,3 +76,28 @@ test('frontend gives an English fallback while the old Worker is deployed', asyn
     globalThis.fetch = async () => new Response(JSON.stringify({ error: 'Old API' }), { status: 405 });
     await assert.rejects(() => listMaps(), /Recent maps are not available yet/);
 });
+
+ test('search covers all matching titles, exact map numbers, literal symbols and filtered pages', async t => {
+    const { request, db } = setup(t);
+    const search = async (q, extra = '') => (await request(`?q=${encodeURIComponent(q)}${extra}`)).json();
+    assert.deepEqual((await search('SAME')).maps.map(m => m.id), [3, 2]);
+    assert.deepEqual((await search('#2')).maps.map(m => m.id), [2]);
+    assert.deepEqual((await search('2')).maps.map(m => m.id), [2]);
+    const page = await search('Same', '&limit=1');
+    assert.deepEqual(page.maps.map(m => m.id), [3]);
+    assert.deepEqual((await search('Same', `&limit=1&cursor=${encodeURIComponent(page.nextCursor)}`)).maps.map(m => m.id), [2]);
+    assert.deepEqual((await search("%' OR 1=1 --")).maps, []);
+    db.prepare('UPDATE maps SET title = ? WHERE id = 1').run('한글 %_ map');
+    assert.deepEqual((await search('한글')).maps.map(m => m.id), [1]);
+    assert.deepEqual((await search('%_')).maps.map(m => m.id), [1]);
+    assert.equal((await request(`?q=${'a'.repeat(61)}`)).status, 400);
+ });
+ test('frontend sends trimmed and encoded search to the Worker', async t => {
+    const { env } = setup(t);
+    const originalFetch = globalThis.fetch;
+    t.after(() => { globalThis.fetch = originalFetch; });
+    let url;
+    globalThis.fetch = (input, options) => { url = new URL(input); return worker.fetch(new Request(input, options), env); };
+    assert.deepEqual((await listMaps({ search: '  #2  ' })).maps.map(m => m.id), ['2']);
+    assert.equal(url.searchParams.get('q'), '#2');
+ });

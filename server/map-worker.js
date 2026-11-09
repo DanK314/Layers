@@ -208,16 +208,24 @@ export default {
                     beforeTime = Number(parts[1]);
                     beforeId = Number(parts[2]);
                 }
-                const statement = cursor === null
-                    ? env.DB.prepare(`
-                        SELECT id, title, created_at FROM maps
-                        ORDER BY created_at DESC, id DESC LIMIT ?
-                    `).bind(limit + 1)
-                    : env.DB.prepare(`
-                        SELECT id, title, created_at FROM maps
-                        WHERE created_at < ? OR (created_at = ? AND id < ?)
-                        ORDER BY created_at DESC, id DESC LIMIT ?
-                    `).bind(beforeTime, beforeTime, beforeId, limit + 1);
+                const search = (url.searchParams.get("q") ?? "").trim();
+                if (search.length > 60) return errorResponse("Search must be at most 60 characters.", 400, origin);
+                const conditions = [];
+                const params = [];
+                if (search) {
+                    // Bind input and treat SQL wildcard characters as literal text.
+                    conditions.push("(instr(lower(title), lower(?)) > 0 OR CAST(id AS TEXT) = ?)");
+                    params.push(search, search.replace(/^#/, ""));
+                }
+                if (cursor !== null) {
+                    conditions.push("(created_at < ? OR (created_at = ? AND id < ?))");
+                    params.push(beforeTime, beforeTime, beforeId);
+                }
+                const statement = env.DB.prepare(`
+                    SELECT id, title, created_at FROM maps
+                    ${conditions.length ? `WHERE ${conditions.join(" AND ")}` : ""}
+                    ORDER BY created_at DESC, id DESC LIMIT ?
+                `).bind(...params, limit + 1);
                 const { results } = await statement.all();
                 const page = results.slice(0, limit);
                 const last = page[page.length - 1];

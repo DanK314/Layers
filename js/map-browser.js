@@ -2,6 +2,11 @@ import { listMaps } from "./map-api.js";
 import { createMapPreview } from "./map-preview.js";
 
 export function createMapBrowser(root, onSelect, { getBestTime = () => null } = {}) {
+    const searchInput = root.querySelector("[data-map-search]");
+    const searchButton = root.querySelector("[data-map-search-button]");
+    const searchClear = root.querySelector("[data-map-search-clear]");
+    const searchControls = root.querySelector("[data-map-search-controls]");
+    let search = "";
     const list = root.querySelector("[data-map-list]");
     const status = root.querySelector("[data-map-status]");
     const refresh = root.querySelector("[data-map-refresh]");
@@ -13,6 +18,7 @@ export function createMapBrowser(root, onSelect, { getBestTime = () => null } = 
         onSelect,
         getBestTime,
         onOpen() {
+            if (searchControls) searchControls.hidden = true;
             list.hidden = true;
             pagination.hidden = true;
             status.hidden = true;
@@ -21,6 +27,7 @@ export function createMapBrowser(root, onSelect, { getBestTime = () => null } = 
         },
         onClose() {
             list.hidden = false;
+            if (searchControls) searchControls.hidden = false;
             pagination.hidden = false;
             status.hidden = false;
             refresh.hidden = false;
@@ -34,6 +41,8 @@ export function createMapBrowser(root, onSelect, { getBestTime = () => null } = 
 
     function controls() {
         refresh.disabled = busy || selecting;
+        if (searchButton) searchButton.disabled = selecting;
+        if (searchClear) searchClear.disabled = selecting;
         previous.disabled = busy || selecting || pageIndex <= 0;
         next.disabled = busy || selecting || !pages[pageIndex]?.nextCursor;
         pageLabel.textContent = pageIndex < 0 ? "PAGE 1" : `PAGE ${pageIndex + 1}`;
@@ -72,6 +81,7 @@ export function createMapBrowser(root, onSelect, { getBestTime = () => null } = 
     function showList() {
         preview.cancel();
         list.hidden = false;
+        if (searchControls) searchControls.hidden = false;
         pagination.hidden = false;
         status.hidden = false;
         refresh.hidden = false;
@@ -80,7 +90,7 @@ export function createMapBrowser(root, onSelect, { getBestTime = () => null } = 
         showList();
         list.replaceChildren(...pages[pageIndex].maps.map(row));
         status.textContent = pages[pageIndex].maps.length
-            ? "Newest maps first. Select a map to preview." : "No maps have been published yet.";
+            ? "Newest maps first. Select a map to preview." : search ? "No maps match your search." : "No maps have been published yet.";
         controls();
         root.closest("dialog")?.scrollTo({ top: 0, behavior: "auto" });
     }
@@ -101,7 +111,7 @@ export function createMapBrowser(root, onSelect, { getBestTime = () => null } = 
         status.textContent = `Loading page ${target + 1}…`;
         controls();
         try {
-            const result = await listMaps({ cursor, signal: request.signal });
+            const result = await listMaps({ cursor, search, signal: request.signal });
             if (controller !== request || request.signal.aborted) return;
             const unique = new Map(result.maps.map(map => [map.id, map]));
             const page = {
@@ -120,6 +130,24 @@ export function createMapBrowser(root, onSelect, { getBestTime = () => null } = 
             if (controller === request) { busy = false; controls(); }
         }
     }
+    function applySearch(clear = false) {
+        if (selecting) return;
+        search = clear ? "" : searchInput.value.trim();
+        if (clear) searchInput.value = "";
+        controller?.abort();
+        controller = null;
+        busy = false;
+        pages = [];
+        pageIndex = -1;
+        list.replaceChildren();
+        void load(0, true);
+    }
+    searchButton?.addEventListener("click", () => applySearch());
+    searchClear?.addEventListener("click", () => applySearch(true));
+    searchInput?.addEventListener("keydown", event => {
+        if (event.key === "Enter" && !event.isComposing) { event.preventDefault(); applySearch(); }
+    });
+    searchInput?.addEventListener("search", () => { if (!searchInput.value) applySearch(true); });
     refresh.addEventListener("click", () => void load(0, true));
     previous.addEventListener("click", () => void load(pageIndex - 1));
     next.addEventListener("click", () => void load(pageIndex + 1));

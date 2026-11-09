@@ -113,6 +113,14 @@
                     <h3 id="recent-maps-title">RECENT MAPS</h3>
                     <button data-map-refresh type="button">REFRESH</button>
                 </div>
+                <div data-map-search-controls class="map-search">
+                    <label for="map-search-input">SEARCH MAPS</label>
+                    <div class="map-search-row">
+                        <input id="map-search-input" data-map-search type="search" maxlength="60" placeholder="Title or #map number" autocomplete="off" enterkeyhint="search">
+                        <button data-map-search-button type="button">SEARCH</button>
+                        <button data-map-search-clear type="button" aria-label="Clear map search">CLEAR</button>
+                    </div>
+                </div>
                 <p data-map-status role="status" aria-live="polite"></p>
                 <section data-map-preview hidden aria-labelledby="map-preview-title">
                     <div class="map-preview-heading">
